@@ -784,10 +784,10 @@ body {
         </div>
         <div class="panel-body">
           <div class="kpi-grid">
-            <div class="kpi-card risk-midhigh">
+            <div class="kpi-card risk-midhigh" id="kpiRiskCard">
               <div class="kpi-label">水锁风险等级</div>
-              <div class="kpi-value risk-midhigh">中高<span class="risk-badge midhigh">预警</span></div>
-              <div class="kpi-sub">基于接触角+孔隙度+裂缝宽度综合判定</div>
+              <div class="kpi-value risk-midhigh" id="kpiRiskValue">中高<span class="risk-badge" style="background:rgba(255,152,0,0.15);color:#ff9800">预警</span></div>
+              <div class="kpi-sub" id="kpiRiskSub">基于接触角+孔隙度+裂缝宽度综合判定</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-label" id="kpiContactLabel">预测接触角</div>
@@ -796,13 +796,13 @@ body {
             </div>
             <div class="kpi-card">
               <div class="kpi-label">裂缝连通性指数</div>
-              <div class="kpi-value accent">0.72</div>
-              <div class="kpi-sub">0-1 数值 · 越高连通性越好</div>
+              <div class="kpi-value accent" id="kpiConnValue">0.72</div>
+              <div class="kpi-sub" id="kpiConnSub">0-1 数值 · 越高连通性越好</div>
             </div>
-            <div class="kpi-card risk-low">
+            <div class="kpi-card risk-low" id="kpiMatchCard">
               <div class="kpi-label">相似井匹配度</div>
-              <div class="kpi-value risk-low">98.2%</div>
-              <div class="kpi-sub">与数据库最优匹配井 XJ-FK-037</div>
+              <div class="kpi-value risk-low" id="kpiMatchValue">98.2%</div>
+              <div class="kpi-sub" id="kpiMatchSub">与数据库最优匹配井 XJ-FK-037</div>
             </div>
           </div>
         </div>
@@ -853,37 +853,10 @@ body {
       <div class="panel result-section" id="secRisk">
         <div class="panel-header">
           <div class="panel-title">风险诊断结论</div>
-          <span style="font-size:11px;color:var(--risk-midhigh);font-weight:600;">● 存在中高风险</span>
+          <span id="riskHeaderIndicator" style="font-size:11px;color:var(--risk-midhigh);font-weight:600;">● 存在中高风险</span>
         </div>
-        <div class="panel-body">
-          <div class="risk-item high">
-            <div class="risk-icon high">!</div>
-            <div class="risk-content">
-              <div class="risk-title">水锁风险分析</div>
-              <div class="risk-desc">该井岩石亲水性强，压裂液滞留风险高。埋深 2350m 条件下地层压力 16.8MPa，压裂液返排困难，水锁伤害可能严重制约产能释放。</div>
-            </div>
-          </div>
-          <div class="risk-item midhigh">
-            <div class="risk-icon midhigh">!</div>
-            <div class="risk-content">
-              <div class="risk-title">裂缝风险评估</div>
-              <div class="risk-desc">裂缝连通性指数 0.72，中等水平。气水两相通道易受阻，裂缝宽度 38μm 在深部条件下偏窄，导流能力受限。</div>
-            </div>
-          </div>
-          <div class="risk-item mid">
-            <div class="risk-icon mid">→</div>
-            <div class="risk-content">
-              <div class="risk-title">返排策略建议</div>
-              <div class="risk-desc">建议采用分段控压返排，避免快速压降。参照相似井 XJ-FK-037 的返排方案，控制井口压力递减速率不超过 0.5MPa/d。</div>
-            </div>
-          </div>
-          <div class="risk-item midhigh">
-            <div class="risk-icon midhigh">↑</div>
-            <div class="risk-content">
-              <div class="risk-title">稳产影响预测</div>
-              <div class="risk-desc">预计稳产阶段水锁伤害影响可达 30% 以上。如不优化返排策略，日产气量可能在 60 天内下降至峰值的 55% 左右。</div>
-            </div>
-          </div>
+        <div class="panel-body" id="riskContainer">
+          <!-- 诊断后动态生成 -->
         </div>
       </div>
 
@@ -1040,13 +1013,214 @@ function toggleOptional() {
   document.getElementById('optSection').classList.toggle('active');
 }
 
+// ===== 井数据库（模拟128口井，此处展示30口代表性井） =====
+var WELL_DB = [
+  { id: 'XJ-FK-037', block: '新疆阜康', depth: 2280, pressure: 15.8, temp: 68, coalRank: '中阶煤', gas: 14.5, porosity: 5.5, fracture: 35, fracFluid: 480, recovery: 28.6, method: '分段控压返排' },
+  { id: 'XJ-FK-056', block: '新疆阜康', depth: 2410, pressure: 17.2, temp: 74, coalRank: '中阶煤', gas: 16.1, porosity: 6.0, fracture: 42, fracFluid: 550, recovery: 18.9, method: '缓慢控压返排' },
+  { id: 'XJ-FK-021', block: '新疆阜康', depth: 2150, pressure: 14.5, temp: 65, coalRank: '中阶煤', gas: 13.2, porosity: 5.0, fracture: 30, fracFluid: 420, recovery: 22.3, method: '分段控压返排' },
+  { id: 'XJ-FK-089', block: '新疆阜康', depth: 2520, pressure: 18.5, temp: 78, coalRank: '高阶煤', gas: 17.8, porosity: 4.2, fracture: 25, fracFluid: 620, recovery: 16.5, method: '闭井后缓慢返排' },
+  { id: 'XJ-FK-103', block: '新疆阜康', depth: 2380, pressure: 16.5, temp: 71, coalRank: '中阶煤', gas: 15.0, porosity: 5.8, fracture: 38, fracFluid: 510, recovery: 25.1, method: '分段控压返排' },
+  { id: 'XJ-FK-045', block: '新疆阜康', depth: 2260, pressure: 15.5, temp: 67, coalRank: '低阶煤', gas: 12.8, porosity: 6.5, fracture: 45, fracFluid: 460, recovery: 20.7, method: '连续低速率返排' },
+  { id: 'XJ-FK-078', block: '新疆阜康', depth: 2460, pressure: 17.8, temp: 76, coalRank: '中阶煤', gas: 16.5, porosity: 5.2, fracture: 32, fracFluid: 580, recovery: 17.2, method: '缓慢控压返排' },
+  { id: 'XJ-FK-115', block: '新疆阜康', depth: 2200, pressure: 14.8, temp: 64, coalRank: '低阶煤', gas: 12.0, porosity: 6.8, fracture: 50, fracFluid: 430, recovery: 23.5, method: '连续低速率返排' },
+  { id: 'XJ-QT-033', block: '新疆鄯善', depth: 2380, pressure: 16.0, temp: 70, coalRank: '中阶煤', gas: 14.8, porosity: 5.3, fracture: 34, fracFluid: 490, recovery: 19.2, method: '连续低速率返排' },
+  { id: 'XJ-QT-015', block: '新疆鄯善', depth: 2200, pressure: 14.8, temp: 63, coalRank: '低阶煤', gas: 12.0, porosity: 6.8, fracture: 48, fracFluid: 440, recovery: 21.5, method: '连续低速率返排' },
+  { id: 'XJ-QT-067', block: '新疆鄯善', depth: 2550, pressure: 18.2, temp: 79, coalRank: '高阶煤', gas: 18.2, porosity: 4.0, fracture: 22, fracFluid: 640, recovery: 14.8, method: '闭井后缓慢返排' },
+  { id: 'XJ-QT-049', block: '新疆鄯善', depth: 2320, pressure: 15.6, temp: 68, coalRank: '中阶煤', gas: 14.2, porosity: 5.6, fracture: 37, fracFluid: 500, recovery: 20.8, method: '分段控压返排' },
+  { id: 'EDS-024', block: '鄂尔多斯', depth: 2100, pressure: 13.5, temp: 60, coalRank: '低阶煤', gas: 11.5, porosity: 7.0, fracture: 52, fracFluid: 400, recovery: 23.8, method: '连续低速率返排' },
+  { id: 'EDS-051', block: '鄂尔多斯', depth: 2250, pressure: 15.0, temp: 66, coalRank: '中阶煤', gas: 14.0, porosity: 5.6, fracture: 36, fracFluid: 470, recovery: 19.6, method: '分段控压返排' },
+  { id: 'EDS-088', block: '鄂尔多斯', depth: 2480, pressure: 17.5, temp: 75, coalRank: '中阶煤', gas: 16.8, porosity: 4.8, fracture: 28, fracFluid: 590, recovery: 16.2, method: '缓慢控压返排' },
+  { id: 'EDS-112', block: '鄂尔多斯', depth: 2650, pressure: 19.0, temp: 82, coalRank: '高阶煤', gas: 19.5, porosity: 3.8, fracture: 20, fracFluid: 680, recovery: 13.5, method: '闭井后缓慢返排' },
+  { id: 'EDS-035', block: '鄂尔多斯', depth: 2180, pressure: 14.2, temp: 62, coalRank: '低阶煤', gas: 12.2, porosity: 6.5, fracture: 44, fracFluid: 430, recovery: 22.0, method: '连续低速率返排' },
+  { id: 'QS-019', block: '沁水盆地', depth: 2050, pressure: 13.0, temp: 58, coalRank: '中阶煤', gas: 12.5, porosity: 6.2, fracture: 40, fracFluid: 430, recovery: 22.1, method: '分段控压返排' },
+  { id: 'QS-046', block: '沁水盆地', depth: 2300, pressure: 15.5, temp: 69, coalRank: '高阶煤', gas: 17.0, porosity: 4.5, fracture: 26, fracFluid: 560, recovery: 17.8, method: '缓慢控压返排' },
+  { id: 'QS-073', block: '沁水盆地', depth: 2180, pressure: 14.2, temp: 62, coalRank: '中阶煤', gas: 13.8, porosity: 5.4, fracture: 33, fracFluid: 450, recovery: 20.4, method: '分段控压返排' },
+  { id: 'QS-095', block: '沁水盆地', depth: 2420, pressure: 16.8, temp: 73, coalRank: '高阶煤', gas: 18.5, porosity: 4.0, fracture: 24, fracFluid: 610, recovery: 15.3, method: '闭井后缓慢返排' },
+  { id: 'QS-028', block: '沁水盆地', depth: 2120, pressure: 13.8, temp: 60, coalRank: '中阶煤', gas: 13.0, porosity: 5.8, fracture: 38, fracFluid: 440, recovery: 21.3, method: '分段控压返排' },
+  { id: 'HC-028', block: '韩城区块', depth: 2150, pressure: 14.0, temp: 61, coalRank: '中阶煤', gas: 12.8, porosity: 5.7, fracture: 31, fracFluid: 410, recovery: 20.9, method: '分段控压返排' },
+  { id: 'HC-055', block: '韩城区块', depth: 2350, pressure: 16.2, temp: 70, coalRank: '中阶煤', gas: 15.5, porosity: 5.0, fracture: 29, fracFluid: 520, recovery: 18.3, method: '缓慢控压返排' },
+  { id: 'HC-081', block: '韩城区块', depth: 2280, pressure: 15.0, temp: 66, coalRank: '低阶煤', gas: 13.0, porosity: 6.3, fracture: 43, fracFluid: 470, recovery: 21.7, method: '连续低速率返排' },
+  { id: 'HC-104', block: '韩城区块', depth: 2500, pressure: 17.8, temp: 77, coalRank: '高阶煤', gas: 18.0, porosity: 4.2, fracture: 23, fracFluid: 630, recovery: 14.2, method: '闭井后缓慢返排' },
+  { id: 'HC-039', block: '韩城区块', depth: 2220, pressure: 14.5, temp: 63, coalRank: '中阶煤', gas: 13.5, porosity: 5.5, fracture: 34, fracFluid: 430, recovery: 19.8, method: '分段控压返排' },
+  { id: 'XJ-FK-127', block: '新疆阜康', depth: 2600, pressure: 19.2, temp: 83, coalRank: '高阶煤', gas: 20.0, porosity: 3.6, fracture: 18, fracFluid: 700, recovery: 12.8, method: '闭井后缓慢返排' },
+  { id: 'EDS-067', block: '鄂尔多斯', depth: 2350, pressure: 16.0, temp: 70, coalRank: '中阶煤', gas: 15.2, porosity: 5.2, fracture: 31, fracFluid: 500, recovery: 18.7, method: '缓慢控压返排' },
+  { id: 'QS-112', block: '沁水盆地', depth: 2560, pressure: 18.0, temp: 80, coalRank: '高阶煤', gas: 19.0, porosity: 3.9, fracture: 21, fracFluid: 660, recovery: 14.0, method: '闭井后缓慢返排' }
+];
+
+// ===== 计算函数 =====
+
+// 预测接触角（无实测数据时，基于埋深、温度、压力、煤阶回归）
+function predictContactAngle(depth, temp, pressure, coalRank) {
+  var base = 82;
+  var tempAdj = (temp - 60) * -0.35;
+  var depthAdj = (depth - 2000) * -0.012;
+  var pressureAdj = (pressure - 15) * -0.45;
+  var coalAdj = 0;
+  if (coalRank === '低阶煤') coalAdj = 7;
+  else if (coalRank === '中阶煤') coalAdj = 0;
+  else if (coalRank === '高阶煤') coalAdj = -11;
+  var angle = base + tempAdj + depthAdj + pressureAdj + coalAdj;
+  return Math.round(Math.max(35, Math.min(115, angle)) * 10) / 10;
+}
+
+// 裂缝连通性指数（基于孔隙度、裂缝宽度、埋深）
+function calcConnectivity(porosity, fractureWidth, depth) {
+  var poroBase = (porosity / 12) * 0.5 + 0.2;
+  var fracBase = Math.min(fractureWidth / 80, 1) * 0.3;
+  var depthPenalty = ((depth - 2000) / 1000) * 0.1;
+  var conn = poroBase + fracBase - depthPenalty;
+  return Math.round(Math.max(0.15, Math.min(0.95, conn)) * 100) / 100;
+}
+
+// 预测返排率（基于连通性、接触角、埋深）
+function calcRecovery(conn, contactAngle, depth) {
+  var base = 14 + conn * 46;
+  var angleFactor = ((contactAngle - 50) / 40) * 12;
+  var depthPenalty = ((depth - 2000) / 1000) * 4;
+  var recovery = base + angleFactor - depthPenalty;
+  return Math.round(Math.max(8, Math.min(72, recovery)) * 10) / 10;
+}
+
+// 残余水饱和度（基于连通性、接触角）
+function calcSaturation(conn, contactAngle) {
+  var base = 72 - conn * 28;
+  var angleAdj = ((90 - contactAngle) / 90) * 12;
+  var sat = base + angleAdj;
+  return Math.round(Math.max(22, Math.min(85, sat)) * 10) / 10;
+}
+
+// 水锁风险评分（0-100，越高风险越大）
+function calcWaterLockRisk(contactAngle, porosity, fractureWidth, fracFluid) {
+  var score = 0;
+  if (contactAngle < 55) score += 32;
+  else if (contactAngle < 70) score += 22;
+  else if (contactAngle < 85) score += 12;
+  else if (contactAngle < 100) score += 4;
+  if (porosity < 3.5) score += 25;
+  else if (porosity < 5.5) score += 15;
+  else if (porosity < 8) score += 6;
+  if (fractureWidth < 20) score += 25;
+  else if (fractureWidth < 35) score += 15;
+  else if (fractureWidth < 55) score += 5;
+  if (fracFluid > 650) score += 18;
+  else if (fracFluid > 500) score += 10;
+  else if (fracFluid > 400) score += 4;
+  return Math.min(100, score);
+}
+
+function riskLevel(score) {
+  if (score < 25) return { level: 'low', label: '低' };
+  if (score < 50) return { level: 'mid', label: '中' };
+  if (score < 75) return { level: 'midhigh', label: '中高' };
+  return { level: 'high', label: '高' };
+}
+
+// 相似井匹配（加权欧氏距离）
+function matchWells(params) {
+  var results = WELL_DB.map(function(well) {
+    var dDepth = Math.abs(well.depth - params.depth) / 1000;
+    var dPressure = Math.abs(well.pressure - params.pressure) / 10;
+    var dTemp = Math.abs(well.temp - params.temp) / 30;
+    var dGas = Math.abs(well.gas - params.gas) / 20;
+    var dPorosity = Math.abs(well.porosity - params.porosity) / 12;
+    var dFracture = Math.abs(well.fracture - params.fracture) / 80;
+    var dCoalRank = well.coalRank === params.coalRank ? 0 : 0.5;
+    var dist = Math.sqrt(
+      dDepth * dDepth * 0.25 +
+      dPressure * dPressure * 0.15 +
+      dTemp * dTemp * 0.10 +
+      dGas * dGas * 0.15 +
+      dPorosity * dPorosity * 0.15 +
+      dFracture * dFracture * 0.10 +
+      dCoalRank * dCoalRank * 0.10
+    );
+    var blockBonus = 0;
+    if (well.block.includes(params.blockShort)) blockBonus = 3;
+    var matchScore = Math.max(50, Math.min(99.9, 100 - dist * 35 + blockBonus));
+    return { well: well, matchScore: Math.round(matchScore * 10) / 10, dDepth: Math.abs(well.depth - params.depth) };
+  });
+  results.sort(function(a, b) { return b.matchScore - a.matchScore; });
+  return results.slice(0, 5);
+}
+
+// 生成日产气曲线
+function generateGasCurve(gasContent, depth, recovery, riskScore) {
+  var days = [];
+  for (var i = 0; i <= 18; i++) { days.push(i * 10); }
+  var peakBase = gasContent * 180 + (depth - 2000) * 0.8;
+  var peak = Math.max(500, peakBase * (0.7 + recovery / 200));
+  var declineRate = 0.02 + riskScore / 100 * 0.05;
+  var data = [];
+  for (var i = 0; i <= 18; i++) {
+    var day = i * 10;
+    var value;
+    if (day <= 30) {
+      value = peak * (1 - Math.exp(-day / 12));
+    } else {
+      value = peak * (1 - Math.exp(-30 / 12)) * Math.exp(-declineRate * (day - 30) / 10);
+    }
+    data.push(Math.round(value));
+  }
+  return { days: days, data: data };
+}
+
+// 生成压力曲线
+function generatePressureCurve(initPressure, connectivity) {
+  var data = [];
+  var declineRate = 0.03 + connectivity * 0.04;
+  var floorPressure = initPressure * 0.3;
+  for (var i = 0; i <= 18; i++) {
+    var day = i * 10;
+    var value = floorPressure + (initPressure - floorPressure) * Math.exp(-declineRate * day / 10);
+    data.push(parseFloat(value.toFixed(1)));
+  }
+  return data;
+}
+
+// 生成含水率曲线
+function generateWaterCurve(riskScore, recovery) {
+  var data = [];
+  var peakWater = 35 + riskScore / 100 * 40;
+  var declineRate = 0.015 + recovery / 100 * 0.03;
+  for (var i = 0; i <= 18; i++) {
+    var day = i * 10;
+    var value;
+    if (day <= 40) {
+      value = peakWater * (1 - Math.exp(-day / 15));
+    } else {
+      value = peakWater * (1 - Math.exp(-40 / 15)) * Math.exp(-declineRate * (day - 40) / 10);
+    }
+    data.push(Math.round(Math.min(95, Math.max(3, value))));
+  }
+  return data;
+}
+
 // ===== 诊断主函数 =====
 function runDiagnosis() {
   var btn = document.getElementById('btnDiagnose');
   var overlay = document.getElementById('loadingOverlay');
   var empty = document.getElementById('resultEmpty');
   var content = document.getElementById('resultContent');
+
+  // 读取所有输入参数
   var wellId = document.getElementById('in_wellid').value || 'XJ-FK-012';
+  var depth = parseFloat(document.getElementById('in_depth').value) || 2350;
+  var pressure = parseFloat(document.getElementById('in_pressure').value) || 16.8;
+  var temp = parseFloat(document.getElementById('in_temp').value) || 72;
+  var coalRank = document.getElementById('in_coalrank').value;
+  var gas = parseFloat(document.getElementById('in_gas').value) || 15.2;
+  var porosity = parseFloat(document.getElementById('in_porosity').value) || 5.8;
+  var fracture = parseFloat(document.getElementById('in_fracture').value) || 38;
+  var fracFluid = parseFloat(document.getElementById('in_fracfluid').value) || 520;
+  var block = document.getElementById('in_block').value;
+
+  // 提取区块简称用于匹配
+  var blockShort = '';
+  if (block.indexOf('阜康') >= 0) blockShort = '阜康';
+  else if (block.indexOf('鄯善') >= 0) blockShort = '鄯善';
+  else if (block.indexOf('鄂尔多斯') >= 0) blockShort = '鄂尔多斯';
+  else if (block.indexOf('沁水') >= 0) blockShort = '沁水';
+  else if (block.indexOf('韩城') >= 0) blockShort = '韩城';
 
   // 读取可选实测数据
   var advance = document.getElementById('in_advance').value.trim();
@@ -1055,46 +1229,132 @@ function runDiagnosis() {
   var bestContact = document.getElementById('in_best_contact').value.trim();
   var bestRate = document.getElementById('in_best_rate').value.trim();
 
-  var hasTech1 = advance || recede || dynamicCA;
   var hasTech2 = bestContact || bestRate;
 
   btn.disabled = true;
   btn.textContent = '诊断中...';
   overlay.classList.add('active');
 
-  // 更新井号
+  // === 核心计算 ===
+  // 1. 接触角
+  var contactAngle, contactSource;
+  if (advance) { contactAngle = parseFloat(advance); contactSource = 'measured'; }
+  else if (dynamicCA) { contactAngle = parseFloat(dynamicCA); contactSource = 'measured'; }
+  else { contactAngle = predictContactAngle(depth, temp, pressure, coalRank); contactSource = 'predicted'; }
+
+  // 2. 润湿性
+  var wettability = contactAngle < 90 ? '亲水型' : '疏水型';
+
+  // 3. 连通性指数
+  var connectivity = calcConnectivity(porosity, fracture, depth);
+  if (hasTech2 && bestContact) connectivity = Math.min(0.95, connectivity + 0.05);
+
+  // 4. 返排率
+  var recovery = bestRate ? parseFloat(bestRate) : calcRecovery(connectivity, contactAngle, depth);
+
+  // 5. 残余水饱和度
+  var saturation = calcSaturation(connectivity, contactAngle);
+
+  // 6. 水锁风险
+  var riskScore = calcWaterLockRisk(contactAngle, porosity, fracture, fracFluid);
+  var risk = riskLevel(riskScore);
+
+  // 7. 相似井匹配
+  var matches = matchWells({ depth: depth, pressure: pressure, temp: temp, gas: gas, porosity: porosity, fracture: fracture, coalRank: coalRank, blockShort: blockShort });
+  var bestMatch = matches[0];
+
+  // === 更新UI ===
   document.getElementById('kpiWellId').textContent = wellId;
 
-  // 更新接触角KPI卡片
-  if (advance) {
-    // 有技术一实测数据
+  // KPI - 水锁风险
+  var riskCard = document.getElementById('kpiRiskCard');
+  var riskValue = document.getElementById('kpiRiskValue');
+  var riskSub = document.getElementById('kpiRiskSub');
+  var riskClasses = { low: 'risk-low', mid: 'risk-mid', midhigh: 'risk-midhigh', high: 'risk-high' };
+  var badgeStyles = { low: 'background:rgba(76,175,80,0.15);color:#4caf50', mid: 'background:rgba(255,193,7,0.15);color:#ffc107', midhigh: 'background:rgba(255,152,0,0.15);color:#ff9800', high: 'background:rgba(244,67,54,0.15);color:#f44336' };
+  var badgeText = risk.level === 'low' ? '安全' : (risk.level === 'mid' ? '关注' : '预警');
+  riskCard.className = 'kpi-card ' + riskClasses[risk.level];
+  riskValue.className = 'kpi-value ' + riskClasses[risk.level];
+  riskValue.innerHTML = risk.label + '<span class="risk-badge" style="' + badgeStyles[risk.level] + '">' + badgeText + '</span>';
+  riskSub.textContent = '风险评分 ' + riskScore + '/100 · 接触角' + contactAngle + '\u00B0 + 孔隙度' + porosity + '% + 裂缝' + fracture + '\u03BCm';
+
+  // KPI - 接触角
+  if (contactSource === 'measured') {
     document.getElementById('kpiContactLabel').textContent = '实测接触角';
-    document.getElementById('kpiContactValue').textContent = advance + '°';
+    document.getElementById('kpiContactValue').textContent = contactAngle + '\u00B0';
     document.getElementById('kpiContactSub').innerHTML = '前进角 · <span class="tag-measured">实测输入</span>';
-
-    // 更新参数补全表：润湿性类型
-    var ca = parseFloat(advance);
-    var wettability = ca < 90 ? '亲水型' : '疏水型';
-    setRow('wettability', wettability, true);
   } else {
-    // 无实测，走预测逻辑
     document.getElementById('kpiContactLabel').textContent = '预测接触角';
-    document.getElementById('kpiContactValue').textContent = '68.5°';
+    document.getElementById('kpiContactValue').textContent = contactAngle + '\u00B0';
     document.getElementById('kpiContactSub').textContent = '前进角 · 基于相似井回归预测';
-    setRow('wettability', '亲水型', false);
   }
 
-  // 更新返排率相关
-  if (bestRate) {
-    // 有技术二实测数据
-    setRow('recovery', bestRate + '%', true);
-    setRow('connectivity', '0.78', true);
-    setRow('saturation', '52.4%', true);
-  } else {
-    setRow('recovery', '42.3%', false);
-    setRow('connectivity', '0.72', false);
-    setRow('saturation', '58.6%', false);
-  }
+  // KPI - 连通性
+  document.getElementById('kpiConnValue').textContent = connectivity.toFixed(2);
+  var connLevel = connectivity > 0.6 ? '良好' : (connectivity > 0.4 ? '中等' : '偏低');
+  document.getElementById('kpiConnSub').textContent = '0-1 数值 · ' + connLevel;
+
+  // KPI - 匹配度
+  var matchCard = document.getElementById('kpiMatchCard');
+  var matchValue = document.getElementById('kpiMatchValue');
+  var matchSub = document.getElementById('kpiMatchSub');
+  var matchClass = bestMatch.matchScore > 85 ? 'risk-low' : (bestMatch.matchScore > 70 ? 'risk-mid' : 'risk-midhigh');
+  matchCard.className = 'kpi-card ' + matchClass;
+  matchValue.className = 'kpi-value ' + matchClass;
+  matchValue.textContent = bestMatch.matchScore + '%';
+  matchSub.textContent = '与数据库最优匹配井 ' + bestMatch.well.id;
+
+  // 参数补全表
+  setRow('wettability', wettability, contactSource === 'measured');
+  setRow('connectivity', connectivity.toFixed(2), hasTech2 && !!bestContact);
+  setRow('recovery', recovery.toFixed(1) + '%', !!bestRate);
+  setRow('saturation', saturation.toFixed(1) + '%', false);
+
+  // 风险结论标题
+  var riskIndicator = document.getElementById('riskHeaderIndicator');
+  var riskColors = { low: 'var(--risk-low)', mid: 'var(--risk-mid)', midhigh: 'var(--risk-midhigh)', high: 'var(--risk-high)' };
+  var riskLabels = { low: '● 风险可控', mid: '● 存在中等风险', midhigh: '● 存在中高风险', high: '● 存在高风险' };
+  riskIndicator.style.color = riskColors[risk.level];
+  riskIndicator.textContent = riskLabels[risk.level];
+
+  // 生成风险结论
+  var riskHTML = '';
+  var wlClass = risk.level === 'high' ? 'high' : (risk.level === 'midhigh' ? 'midhigh' : (risk.level === 'mid' ? 'mid' : 'low'));
+  var wlDesc = '';
+  if (contactAngle < 60) wlDesc = '该井岩石强亲水（接触角' + contactAngle + '\u00B0），压裂液滞留风险极高。埋深' + depth + 'm条件下地层压力' + pressure + 'MPa，压裂液返排困难，水锁伤害可能严重制约产能释放。';
+  else if (contactAngle < 85) wlDesc = '该井岩石亲水性较强（接触角' + contactAngle + '\u00B0），压裂液滞留风险较高。埋深' + depth + 'm条件下地层压力' + pressure + 'MPa，需优化返排策略以降低水锁伤害。';
+  else if (contactAngle < 100) wlDesc = '该井岩石弱亲水（接触角' + contactAngle + '\u00B0），压裂液滞留风险中等。埋深' + depth + 'm条件下地层压力' + pressure + 'MPa，常规返排策略可控。';
+  else wlDesc = '该井岩石疏水（接触角' + contactAngle + '\u00B0），压裂液滞留风险较低。埋深' + depth + 'm条件下地层压力' + pressure + 'MPa，水锁伤害风险较小。';
+  riskHTML += '<div class="risk-item ' + wlClass + '"><div class="risk-icon ' + wlClass + '">!</div><div class="risk-content"><div class="risk-title">水锁风险分析</div><div class="risk-desc">' + wlDesc + '</div></div></div>';
+
+  var fracClass = connectivity < 0.4 ? 'high' : (connectivity < 0.55 ? 'midhigh' : (connectivity < 0.7 ? 'mid' : 'low'));
+  var fracDesc = '裂缝连通性指数' + connectivity.toFixed(2) + '，' + (connectivity > 0.6 ? '良好水平' : (connectivity > 0.4 ? '中等水平' : '偏低')) + '。气水两相通道' + (connectivity > 0.6 ? '较通畅' : (connectivity > 0.4 ? '易受阻' : '严重受限')) + '，裂缝宽度' + fracture + '\u03BCm在' + depth + 'm深部条件下' + (fracture > 40 ? '导流能力较好' : (fracture > 25 ? '导流能力一般' : '导流能力受限')) + '。';
+  riskHTML += '<div class="risk-item ' + fracClass + '"><div class="risk-icon ' + fracClass + '">!</div><div class="risk-content"><div class="risk-title">裂缝风险评估</div><div class="risk-desc">' + fracDesc + '</div></div></div>';
+
+  var ctrlRate = riskScore > 60 ? '0.3' : (riskScore > 40 ? '0.5' : '0.8');
+  var strategyDesc = '建议采用' + bestMatch.well.method + '，避免快速压降。参照相似井' + bestMatch.well.id + '的返排方案，控制井口压力递减速率不超过' + ctrlRate + 'MPa/d。' + (bestRate ? '实测最佳排液速率' + bestRate + 'm\u00B3/d，建议以此为基准调整。' : '预测最佳排液速率约' + (5 + recovery / 5).toFixed(1) + 'm\u00B3/d。');
+  riskHTML += '<div class="risk-item mid"><div class="risk-icon mid">\u2192</div><div class="risk-content"><div class="risk-title">返排策略建议</div><div class="risk-desc">' + strategyDesc + '</div></div></div>';
+
+  var impactPct = Math.round(20 + riskScore / 100 * 30);
+  var declinePct = Math.round(40 + riskScore / 100 * 25);
+  var impactDesc = '预计稳产阶段水锁伤害影响可达' + impactPct + '%以上。如不优化返排策略，日产气量可能在60天内下降至峰值的' + declinePct + '%左右。' + (recovery > 30 ? '当前预测返排率' + recovery.toFixed(1) + '%，返排效果较好，影响可控。' : '当前预测返排率' + recovery.toFixed(1) + '%，返排效果一般，需重点关注。');
+  var impactClass = riskScore > 60 ? 'midhigh' : 'mid';
+  riskHTML += '<div class="risk-item ' + impactClass + '"><div class="risk-icon ' + impactClass + '">\u2191</div><div class="risk-content"><div class="risk-title">稳产影响预测</div><div class="risk-desc">' + impactDesc + '</div></div></div>';
+  document.getElementById('riskContainer').innerHTML = riskHTML;
+
+  // 相似井列表
+  var wellHTML = '';
+  matches.forEach(function(m, idx) {
+    var isBest = idx === 0;
+    var mClass = m.matchScore >= 85 ? 'high' : 'mid';
+    wellHTML += '<div class="well-card' + (isBest ? ' best' : '') + '"><div class="well-card-header"><span class="well-id">' + m.well.id + '</span><span class="well-match ' + mClass + '">' + m.matchScore + '%</span></div><div class="well-info"><span>' + m.well.block + '</span><span>埋深 ' + m.well.depth + 'm</span><span>' + m.well.coalRank + '</span></div><div class="well-result">增产率 <span class="rate">' + m.well.recovery + '%</span> · ' + m.well.method + '</div></div>';
+  });
+  var sameBlock = bestMatch.well.block.indexOf(blockShort) >= 0;
+  wellHTML += '<div class="recommend-card"><div class="recommend-title">\u2605 推荐参考方案</div><div class="recommend-body">参照 <strong>' + bestMatch.well.id + '</strong>（匹配度 ' + bestMatch.matchScore + '%）的返排方案：<br>该井与目标井' + (sameBlock ? '同处' + blockShort + '区块' : '邻近' + bestMatch.well.block + '区块') + '，埋深相差' + Math.round(bestMatch.dDepth) + 'm' + (bestMatch.well.coalRank === coalRank ? '，煤阶一致' : '，煤阶为' + bestMatch.well.coalRank) + '。采用<strong>' + bestMatch.well.method + '</strong>策略，控压速率' + ctrlRate + 'MPa/d，最终实现 <strong>' + bestMatch.well.recovery + '%</strong> 增产率。</div></div>';
+  document.getElementById('wellList').innerHTML = wellHTML;
+
+  // 存储诊断结果供图表使用
+  var diagResults = { gasContent: gas, depth: depth, recovery: recovery, riskScore: riskScore, pressure: pressure, connectivity: connectivity };
 
   setTimeout(function() {
     overlay.classList.remove('active');
@@ -1102,16 +1362,11 @@ function runDiagnosis() {
     btn.textContent = '重新诊断';
     empty.style.display = 'none';
     content.style.display = 'block';
-
-    // 依次显示结果区域
     var sections = ['secKpi', 'secParam', 'secRisk', 'secChart'];
     sections.forEach(function(id, i) {
-      setTimeout(function() {
-        document.getElementById(id).classList.add('show');
-      }, i * 200);
+      setTimeout(function() { document.getElementById(id).classList.add('show'); }, i * 200);
     });
-
-    setTimeout(renderCharts, 600);
+    setTimeout(function() { renderCharts(diagResults); }, 600);
   }, 1500);
 }
 
@@ -1131,14 +1386,12 @@ function setRow(name, value, isMeasured) {
   }
 }
 
-function renderCharts() {
+function renderCharts(diagResults) {
   var style = getComputedStyle(document.documentElement);
   var accent = style.getPropertyValue('--accent').trim();
   var accent2 = style.getPropertyValue('--accent2').trim();
-  var ink = style.getPropertyValue('--ink').trim();
   var muted = style.getPropertyValue('--muted').trim();
   var rule = style.getPropertyValue('--rule').trim();
-  var bg2 = style.getPropertyValue('--bg2').trim();
 
   var commonGrid = { left: 50, right: 20, top: 20, bottom: 30 };
   var commonAxis = {
@@ -1147,38 +1400,33 @@ function renderCharts() {
     splitLine: { lineStyle: { color: rule, type: 'dashed', opacity: 0.5 } }
   };
 
-  // Chart 1: Gas Production
-  var days = [];
-  for (var i = 0; i <= 18; i++) { days.push(i * 10); }
-  var gasData = [0, 320, 850, 1450, 2100, 2680, 3050, 3280, 3380, 3320, 3180, 2980, 2720, 2480, 2250, 2050, 1880, 1720, 1580];
+  // 动态生成图表数据
+  var gasCurve = generateGasCurve(diagResults.gasContent, diagResults.depth, diagResults.recovery, diagResults.riskScore);
+  var pressureData = generatePressureCurve(diagResults.pressure, diagResults.connectivity);
+  var waterData = generateWaterCurve(diagResults.riskScore, diagResults.recovery);
+  var days = gasCurve.days;
 
+  // Chart 1: Gas Production
   var chartGas = echarts.init(document.getElementById('chartGas'), null, { renderer: 'svg' });
   chartGas.setOption({
     grid: commonGrid,
     tooltip: { trigger: 'axis', appendToBody: true },
     xAxis: { type: 'category', data: days, name: '天', ...commonAxis },
-    yAxis: { type: 'value', name: 'm³/d', ...commonAxis },
+    yAxis: { type: 'value', name: 'm\u00B3/d', ...commonAxis },
     series: [{
-      type: 'line',
-      data: gasData,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 5,
+      type: 'line', data: gasCurve.data, smooth: true,
+      symbol: 'circle', symbolSize: 5,
       lineStyle: { color: accent, width: 2 },
       itemStyle: { color: accent },
-      areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(0, 212, 255, 0.25)' },
-          { offset: 1, color: 'rgba(0, 212, 255, 0)' }
-        ])
-      }
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(0, 212, 255, 0.25)' },
+        { offset: 1, color: 'rgba(0, 212, 255, 0)' }
+      ])}
     }]
   });
   window.addEventListener('resize', function() { chartGas.resize(); });
 
   // Chart 2: Pressure
-  var pressureData = [16.8, 15.2, 13.5, 12.1, 10.8, 9.6, 8.7, 8.0, 7.5, 7.1, 6.8, 6.6, 6.4, 6.3, 6.2, 6.1, 6.0, 5.9, 5.8];
-
   var chartPressure = echarts.init(document.getElementById('chartPressure'), null, { renderer: 'svg' });
   chartPressure.setOption({
     grid: commonGrid,
@@ -1186,26 +1434,19 @@ function renderCharts() {
     xAxis: { type: 'category', data: days, name: '天', ...commonAxis },
     yAxis: { type: 'value', name: 'MPa', ...commonAxis },
     series: [{
-      type: 'line',
-      data: pressureData,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 5,
+      type: 'line', data: pressureData, smooth: true,
+      symbol: 'circle', symbolSize: 5,
       lineStyle: { color: accent2, width: 2 },
       itemStyle: { color: accent2 },
-      areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(0, 153, 204, 0.25)' },
-          { offset: 1, color: 'rgba(0, 153, 204, 0)' }
-        ])
-      }
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(0, 153, 204, 0.25)' },
+        { offset: 1, color: 'rgba(0, 153, 204, 0)' }
+      ])}
     }]
   });
   window.addEventListener('resize', function() { chartPressure.resize(); });
 
   // Chart 3: Water Cut
-  var waterData = [5, 18, 35, 48, 56, 62, 66, 68, 69, 68, 66, 63, 59, 55, 51, 47, 44, 41, 38];
-
   var chartWater = echarts.init(document.getElementById('chartWater'), null, { renderer: 'svg' });
   chartWater.setOption({
     grid: commonGrid,
@@ -1213,19 +1454,14 @@ function renderCharts() {
     xAxis: { type: 'category', data: days, name: '天', ...commonAxis },
     yAxis: { type: 'value', name: '%', max: 100, ...commonAxis },
     series: [{
-      type: 'line',
-      data: waterData,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 5,
+      type: 'line', data: waterData, smooth: true,
+      symbol: 'circle', symbolSize: 5,
       lineStyle: { color: '#ffc107', width: 2 },
       itemStyle: { color: '#ffc107' },
-      areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(255, 193, 7, 0.25)' },
-          { offset: 1, color: 'rgba(255, 193, 7, 0)' }
-        ])
-      }
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(255, 193, 7, 0.25)' },
+        { offset: 1, color: 'rgba(255, 193, 7, 0)' }
+      ])}
     }]
   });
   window.addEventListener('resize', function() { chartWater.resize(); });
