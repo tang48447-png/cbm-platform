@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>探微知流 · 数据管理后台</title>
+<script src="./_shared/js/echarts.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --bg2: #161b22; --surface: #1c2330; --surface2: #21262d;
+  --ink: #e6edf3; --muted: #8b949e; --muted2: #6e7681;
+  --rule: #30363d; --accent: #2f81f7; --accent2: #1f6feb;
+  --green: #3fb950; --yellow: #d29922; --red: #f85149; --purple: #bc8cff; --cyan: #39d2c0;
+  --font: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --mono: "Consolas", "SF Mono", monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--font); background:var(--bg); color:var(--ink); font-size:13px; }
+.layout { display:flex; min-height:100vh; }
+
+/* Sidebar */
+.sidebar { width:220px; background:var(--bg2); border-right:1px solid var(--rule); flex-shrink:0; }
+.sidebar-logo { padding:16px 20px; border-bottom:1px solid var(--rule); display:flex; align-items:center; gap:10px; }
+.sidebar-logo .icon { width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;color:#fff; }
+.sidebar-logo .name { font-size:14px;font-weight:700; }
+.sidebar-logo .sub { font-size:10px;color:var(--muted); }
+.nav-section { padding:12px 0; }
+.nav-title { font-size:10px;color:var(--muted2);padding:0 20px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px; }
+.nav-item { padding:8px 20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);cursor:pointer;transition:0.2s;border-left:2px solid transparent; }
+.nav-item:hover { background:var(--surface);color:var(--ink); }
+.nav-item.active { background:rgba(47,129,247,0.1);color:var(--accent);border-left-color:var(--accent); }
+.nav-item .badge { margin-left:auto;font-size:10px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:10px; }
+
+/* Main */
+.main { flex:1; overflow-x:hidden; }
+.topbar { height:52px;background:var(--bg2);border-bottom:1px solid var(--rule);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:50; }
+.topbar-title { font-size:15px;font-weight:700; }
+.topbar-crumb { font-size:11px;color:var(--muted); }
+.topbar-search { margin-left:auto;width:240px;height:30px;background:var(--surface);border:1px solid var(--rule);border-radius:6px;display:flex;align-items:center;padding:0 10px;gap:8px; }
+.topbar-search input { background:none;border:none;outline:none;color:var(--ink);font-size:12px;flex:1;font-family:var(--font); }
+.topbar-avatar { width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--accent));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#fff; }
+.content { padding:20px 24px; }
+.view { display:none; }
+.view.active { display:block; }
+
+/* Stats */
+.stats-row { display:flex;gap:16px;margin-bottom:20px; }
+.stat-card { flex:1;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:16px;position:relative;overflow:hidden; }
+.stat-card::before { content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent); }
+.stat-card.green::before { background:var(--green); }
+.stat-card.yellow::before { background:var(--yellow); }
+.stat-card.purple::before { background:var(--purple); }
+.stat-label { font-size:11px;color:var(--muted);margin-bottom:8px; }
+.stat-value { font-size:26px;font-weight:700;font-family:var(--mono); }
+.stat-value.green { color:var(--green); } .stat-value.yellow { color:var(--yellow); }
+.stat-value.purple { color:var(--purple); } .stat-value.accent { color:var(--accent); }
+.stat-trend { font-size:10px;margin-top:4px; }
+.stat-trend.up { color:var(--green); } .stat-trend.down { color:var(--red); }
+
+/* Toolbar */
+.toolbar { display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap; }
+.btn { padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--rule);background:var(--surface);color:var(--ink);display:flex;align-items:center;gap:6px;transition:0.2s;font-family:var(--font); }
+.btn:hover { border-color:var(--accent); }
+.btn.primary { background:var(--accent);border-color:var(--accent);color:#fff; }
+.btn.danger { background:rgba(248,81,73,0.1);border-color:var(--red);color:var(--red); }
+.filter-chip { font-size:11px;padding:4px 10px;border-radius:20px;background:var(--surface);border:1px solid var(--rule);color:var(--muted);cursor:pointer;transition:0.2s; }
+.filter-chip.active { background:rgba(47,129,247,0.15);border-color:var(--accent);color:var(--accent); }
+.toolbar-info { font-size:11px;color:var(--muted);margin-left:auto; }
+
+/* Table */
+.table-wrap { background:var(--surface);border:1px solid var(--rule);border-radius:8px;overflow:hidden; }
+table { width:100%;border-collapse:collapse;font-size:12px; }
+thead th { background:var(--bg2);color:var(--muted);font-weight:600;padding:10px 12px;text-align:left;font-size:11px;border-bottom:1px solid var(--rule);white-space:nowrap; }
+tbody td { padding:8px 12px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:11px; }
+tbody tr:hover { background:rgba(47,129,247,0.04); }
+tbody tr:last-child td { border-bottom:none; }
+.tag { display:inline-block;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600;font-family:var(--font); }
+.tag.verified { background:rgba(47,129,247,0.15);color:var(--accent); }
+.tag.predict { background:rgba(210,153,34,0.15);color:var(--yellow); }
+.tag.pending { background:rgba(248,81,73,0.15);color:var(--red); }
+.row-actions { display:flex;gap:4px; }
+.row-btn { width:24px;height:24px;border-radius:4px;border:1px solid var(--rule);background:var(--bg2);color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:0.2s; }
+.row-btn:hover { border-color:var(--accent);color:var(--accent); }
+.row-btn.del:hover { border-color:var(--red);color:var(--red); }
+
+/* Pagination */
+.pagination { display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg2);border-top:1px solid var(--rule); }
+.pagination-info { font-size:11px;color:var(--muted); }
+.pagination-btns { display:flex;gap:4px; }
+.page-btn { min-width:28px;height:28px;border-radius:6px;border:1px solid var(--rule);background:var(--surface);color:var(--muted);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 6px;font-family:var(--font); }
+.page-btn.active { background:var(--accent);border-color:var(--accent);color:#fff; }
+.page-btn:disabled { opacity:0.4;cursor:not-allowed; }
+
+/* Modal */
+.modal-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center; }
+.modal-overlay.active { display:flex; }
+.modal { background:var(--surface);border:1px solid var(--rule);border-radius:10px;width:560px;max-height:85vh;overflow-y:auto; }
+.modal-header { padding:16px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:10px 10px 0 0; }
+.modal-title { font-size:15px;font-weight:700; }
+.modal-close { width:28px;height:28px;border-radius:6px;border:none;background:var(--surface);color:var(--muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center; }
+.modal-close:hover { color:var(--red); }
+.modal-body { padding:20px; }
+.form-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
+.form-group { margin-bottom:0; }
+.form-group.full { grid-column:1/-1; }
+.form-label { font-size:11px;color:var(--muted);margin-bottom:5px; }
+.form-input, .form-select { width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:6px;padding:8px 12px;color:var(--ink);font-size:13px;font-family:var(--font); }
+.form-input:focus, .form-select:focus { outline:none;border-color:var(--accent); }
+.modal-footer { padding:14px 20px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:8px;background:var(--bg2);border-radius:0 0 10px 10px; }
+.form-section { grid-column:1/-1;margin:8px 0 4px;padding:8px 12px;background:rgba(47,129,247,0.08);border-left:3px solid var(--accent);border-radius:0 4px 4px 0;display:flex;align-items:center;justify-content:space-between; }
+.form-section-title { font-size:12px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px; }
+.form-section-tag { font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(63,185,80,0.15);color:var(--green); }
+.form-input.measured { border-color:rgba(57,210,192,0.3); }
+.form-input.measured:focus { border-color:var(--cyan); }
+.form-input.measured::placeholder { color:rgba(57,210,192,0.4); }
+.unit-suffix { font-size:11px;color:var(--muted2);margin-left:4px; }
+.detail-section { margin-bottom:18px; }
+.detail-section-title { font-size:12px;font-weight:700;color:var(--accent);padding:8px 12px;background:rgba(47,129,247,0.08);border-left:3px solid var(--accent);border-radius:0 4px 4px 0;margin-bottom:10px; }
+.detail-section-title.measured { color:var(--cyan);border-left-color:var(--cyan);background:rgba(57,210,192,0.08); }
+.detail-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 4px; }
+.detail-item { display:flex;flex-direction:column; }
+.detail-label { font-size:10px;color:var(--muted);margin-bottom:3px; }
+.detail-value { font-size:14px;font-weight:600;font-family:var(--mono);color:var(--ink); }
+.detail-value.accent { color:var(--accent); } .detail-value.green { color:var(--green); }
+.detail-value.cyan { color:var(--cyan); } .detail-value.yellow { color:var(--yellow); }
+.detail-value.muted { color:var(--muted2);font-weight:400;font-family:var(--font); }
+.detail-empty { font-size:11px;color:var(--muted2);font-style:italic; }
+
+/* Toast */
+.toast { position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--green);border-radius:8px;padding:12px 20px;font-size:13px;color:var(--green);z-index:300;opacity:0;transform:translateY(20px);transition:0.3s; }
+.toast.show { opacity:1;transform:translateY(0); }
+.toast.error { border-color:var(--red);color:var(--red); }
+
+/* Model Training */
+.train-banner { background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--rule);border-radius:10px;padding:20px;margin-bottom:20px;display:flex;align-items:center;gap:24px; }
+.train-banner-left { flex:1; }
+.train-banner-title { font-size:16px;font-weight:700;margin-bottom:4px; }
+.train-banner-sub { font-size:12px;color:var(--muted); }
+.train-progress-ring { width:80px;height:80px;position:relative;flex-shrink:0; }
+.train-progress-ring svg { transform:rotate(-90deg); }
+.train-progress-ring .pct { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:18px;font-weight:700;font-family:var(--mono);color:var(--accent); }
+.grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px; }
+.grid-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px; }
+.card { background:var(--surface);border:1px solid var(--rule);border-radius:8px;overflow:hidden; }
+.card-header { padding:12px 16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:var(--bg2); }
+.card-title { font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px; }
+.card-title::before { content:'';width:3px;height:14px;background:var(--accent);border-radius:2px; }
+.card-body { padding:16px; }
+.metric-row { display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule); }
+.metric-row:last-child { border-bottom:none; }
+.metric-label { font-size:12px;color:var(--muted); }
+.metric-value { font-size:16px;font-weight:700;font-family:var(--mono); }
+.metric-value.green { color:var(--green); } .metric-value.accent { color:var(--accent); }
+.metric-value.purple { color:var(--purple); } .metric-value.cyan { color:var(--cyan); }
+.loss-chart { width:100%;height:180px; }
+.loss-legend { display:flex;gap:16px;margin-top:10px;font-size:11px; }
+.loss-legend-item { display:flex;align-items:center;gap:6px;color:var(--muted); }
+.loss-legend-dot { width:10px;height:3px;border-radius:2px; }
+.arch-flow { display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 0;flex-wrap:wrap; }
+.arch-layer { padding:10px 14px;border-radius:8px;font-size:11px;text-align:center;border:1px solid var(--rule);min-width:70px; }
+.arch-layer.input { background:rgba(63,185,80,0.1);border-color:var(--green);color:var(--green); }
+.arch-layer.cnn { background:rgba(47,129,247,0.1);border-color:var(--accent);color:var(--accent); }
+.arch-layer.rnn { background:rgba(188,140,255,0.1);border-color:var(--purple);color:var(--purple); }
+.arch-layer.fc { background:rgba(57,210,192,0.1);border-color:var(--cyan);color:var(--cyan); }
+.arch-layer.output { background:rgba(210,153,34,0.1);border-color:var(--yellow);color:var(--yellow); }
+.arch-arrow { color:var(--muted2);font-size:14px; }
+.arch-info { font-size:10px;color:var(--muted);margin-top:4px; }
+.matrix-wrap { display:flex;justify-content:center;padding:10px 0; }
+.matrix { display:grid;grid-template-columns:auto 50px 50px 50px;grid-template-rows:auto 50px 50px 50px;gap:2px; }
+.matrix-label { font-size:10px;color:var(--muted);display:flex;align-items:center;justify-content:center; }
+.matrix-cell { border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;font-family:var(--mono); }
+.log-wrap { background:#010409;border:1px solid var(--rule);border-radius:6px;padding:12px;font-family:var(--mono);font-size:11px;max-height:200px;overflow-y:auto; }
+.log-line { margin-bottom:4px;line-height:1.6; }
+.log-time { color:var(--muted2); } .log-info { color:var(--accent); }
+.log-success { color:var(--green); } .log-warn { color:var(--yellow); }
+.log-text { color:var(--ink); }
+
+/* Data Coding */
+.pipeline { display:flex;align-items:stretch;gap:0;margin-bottom:20px; }
+.pipe-step { flex:1;background:var(--surface);border:1px solid var(--rule);padding:14px;text-align:center;position:relative; }
+.pipe-step:not(:last-child) { border-right:none; }
+.pipe-step:not(:last-child)::after { content:'\25B6';position:absolute;right:-8px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:12px;z-index:1; }
+.pipe-step.active { background:rgba(47,129,247,0.08);border-color:var(--accent); }
+.pipe-icon { font-size:20px;margin-bottom:6px; }
+.pipe-title { font-size:12px;font-weight:700;margin-bottom:4px; }
+.pipe-desc { font-size:10px;color:var(--muted); }
+.pipe-count { font-size:16px;font-weight:700;font-family:var(--mono);color:var(--accent);margin-top:4px; }
+.encode-table { width:100%;border-collapse:collapse;font-size:11px; }
+.encode-table th { background:var(--bg2);color:var(--muted);font-weight:600;padding:8px 10px;text-align:left;font-size:10px;border-bottom:1px solid var(--rule); }
+.encode-table td { padding:7px 10px;border-bottom:1px solid var(--rule);font-family:var(--mono); }
+.encode-table tr:hover td { background:rgba(47,129,247,0.04); }
+.code-tag { display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;font-family:var(--mono);font-weight:600; }
+.code-tag.block { background:rgba(47,129,247,0.15);color:var(--accent); }
+.code-tag.rank { background:rgba(188,140,255,0.15);color:var(--purple); }
+.code-tag.depth { background:rgba(57,210,192,0.15);color:var(--cyan); }
+.code-tag.status { background:rgba(63,185,80,0.15);color:var(--green); }
+.quality-row { margin-bottom:12px; }
+.quality-label { display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px; }
+.quality-bar { height:6px;background:var(--bg2);border-radius:3px;overflow:hidden; }
+.quality-fill { height:100%;border-radius:3px; }
+.mini-stats { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+.mini-stat { background:var(--bg2);border:1px solid var(--rule);border-radius:6px;padding:12px;text-align:center; }
+.mini-stat-label { font-size:10px;color:var(--muted);margin-bottom:6px; }
+.mini-stat-value { font-size:20px;font-weight:700;font-family:var(--mono); }
+.mini-stat-value.green { color:var(--green); } .mini-stat-value.accent { color:var(--accent); }
+.mini-stat-value.yellow { color:var(--yellow); } .mini-stat-value.purple { color:var(--purple); }
+.activity-item { display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--rule); }
+.activity-item:last-child { border-bottom:none; }
+.activity-dot { width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0; }
+.activity-dot.green { background:var(--green); } .activity-dot.yellow { background:var(--yellow); }
+.activity-dot.accent { background:var(--accent); }
+.activity-content { flex:1; }
+.activity-text { font-size:12px; }
+.activity-time { font-size:10px;color:var(--muted2);margin-top:2px; }
+.dist-row { margin-bottom:10px; }
+.dist-label { display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px; }
+.dist-label span:last-child { font-family:var(--mono); }
+
+/* Status pill */
+.status-pill { font-size:11px;padding:4px 12px;border-radius:20px;display:flex;align-items:center;gap:6px; }
+.status-pill.running { background:rgba(63,185,80,0.15);color:var(--green); }
+.status-dot { width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+/* Responsive */
+@media (max-width:1200px) { .grid-2,.grid-3 { grid-template-columns:1fr; } .stats-row { flex-wrap:wrap; } .stat-card { min-width:200px; } }
+@media (max-width:768px) { .sidebar { display:none; } .form-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="icon">探</div>
+      <div><div class="name">探微知流</div><div class="sub">数据管理后台 v2.1</div></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-title">数据管理</div>
+      <div class="nav-item active" onclick="switchView('db')" id="nav-db">井数据库 <span class="badge" id="navBadge">128</span></div>
+      <div class="nav-item" onclick="switchView('coding')" id="nav-coding">数据编码审核</div>
+      <div class="nav-item" onclick="switchView('measure')" id="nav-measure">实测数据录入</div>
+      <div class="nav-item" onclick="switchView('export')" id="nav-export">数据导出</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-title">模型中心</div>
+      <div class="nav-item" onclick="switchView('model')" id="nav-model">接触角预测模型</div>
+      <div class="nav-item" onclick="switchView('match')" id="nav-match">相似井匹配引擎</div>
+      <div class="nav-item" onclick="switchView('history')" id="nav-history">训练记录</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-title">系统</div>
+      <div class="nav-item" onclick="switchView('users')" id="nav-users">用户权限</div>
+      <div class="nav-item" onclick="switchView('logs')" id="nav-logs">操作日志</div>
+      <div class="nav-item" onclick="switchView('settings')" id="nav-settings">系统设置</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbarTitle">井数据库管理</div>
+        <div class="topbar-crumb" id="topbarCrumb">数据管理 / 井数据库 / 全部井</div>
+      </div>
+      <div class="topbar-search">
+        <span style="color:var(--muted);font-size:12px;">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜索井号、区块..." oninput="handleSearch()">
+      </div>
+      <div class="topbar-avatar">陈</div>
+    </div>
+
+    <div class="content">
+
+      <!-- ===== View 1: Well Database ===== -->
+      <div class="view active" id="view-db">
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-label">数据库总井数</div>
+            <div class="stat-value accent" id="statTotal">30</div>
+            <div class="stat-trend up">▲ 覆盖5大区块</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-label">已验证井（实测）</div>
+            <div class="stat-value green" id="statVerified">24</div>
+            <div class="stat-trend up" id="statVerifiedRate">验证率 80.0%</div>
+          </div>
+          <div class="stat-card yellow">
+            <div class="stat-label">预测补全井</div>
+            <div class="stat-value yellow" id="statPredict">4</div>
+            <div class="stat-trend">基于模型回归预测</div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-label">待审核数据</div>
+            <div class="stat-value purple" id="statPending">2</div>
+            <div class="stat-trend down">需人工确认</div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn primary" onclick="openModal()">+ 录入新井</button>
+          <button class="btn" onclick="document.getElementById('importFile').click()">批量导入</button>
+          <input type="file" id="importFile" accept=".csv" style="display:none" onchange="importCSV(event)">
+          <button class="btn" onclick="exportCSV()">导出CSV</button>
+          <span class="filter-chip active" onclick="setFilter('all',this)">全部区块</span>
+          <span class="filter-chip" onclick="setFilter('阜康',this)">阜康</span>
+          <span class="filter-chip" onclick="setFilter('鄯善',this)">鄯善</span>
+          <span class="filter-chip" onclick="setFilter('鄂尔多斯',this)">鄂尔多斯</span>
+          <span class="filter-chip" onclick="setFilter('沁水',this)">沁水</span>
+          <span class="filter-chip" onclick="setFilter('韩城',this)">韩城</span>
+          <span class="toolbar-info" id="toolbarInfo">共 30 条记录</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>井号</th><th>区块</th><th>埋深(m)</th><th>压力(MPa)</th>
+                <th>温度(°C)</th><th>煤阶</th><th>含气量(m³/t)</th><th>孔隙度(%)</th>
+                <th>裂缝(μm)</th><th>接触角(°)</th><th>返排率(%)</th><th>状态</th><th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+          <div class="pagination">
+            <div class="pagination-info" id="pageInfo"></div>
+            <div class="pagination-btns" id="pageBtns"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== View 2: Model Training ===== -->
+      <div class="view" id="view-model">
+        <div class="train-banner">
+          <div class="train-banner-left">
+            <div class="train-banner-title">CNN-RNN-ANN 融合神经网络 · 第 047 次训练</div>
+            <div class="train-banner-sub">数据集：30 口井 · 训练集 24 / 验证集 6 · 当前 Epoch 187/300</div>
+          </div>
+          <div class="train-progress-ring">
+            <svg width="80" height="80">
+              <circle cx="40" cy="40" r="34" stroke="#30363d" stroke-width="5" fill="none"/>
+              <circle cx="40" cy="40" r="34" stroke="#2f81f7" stroke-width="5" fill="none" stroke-dasharray="213.6" stroke-dashoffset="42.7" stroke-linecap="round"/>
+            </svg>
+            <div class="pct">80%</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">训练损失曲线</div><span style="font-size:11px;color:var(--muted)">Epoch 187</span></div>
+            <div class="card-body">
+              <div class="loss-chart" id="lossChart"></div>
+              <div class="loss-legend">
+                <div class="loss-legend-item"><div class="loss-legend-dot" style="background:#2f81f7"></div>训练损失</div>
+                <div class="loss-legend-item"><div class="loss-legend-dot" style="background:#bc8cff"></div>验证损失</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">模型评估指标</div><span style="font-size:11px;color:var(--green)">● 最优</span></div>
+            <div class="card-body">
+              <div class="metric-row"><div class="metric-label">R² 决定系数</div><div class="metric-value green">0.962</div></div>
+              <div class="metric-row"><div class="metric-label">RMSE 均方根误差</div><div class="metric-value accent">1.83°</div></div>
+              <div class="metric-row"><div class="metric-label">MAE 平均绝对误差</div><div class="metric-value accent">1.41°</div></div>
+              <div class="metric-row"><div class="metric-label">验证集准确率</div><div class="metric-value green">94.3%</div></div>
+              <div class="metric-row"><div class="metric-label">模型参数量</div><div class="metric-value purple">2.18M</div></div>
+              <div class="metric-row"><div class="metric-label">单次推理耗时</div><div class="metric-value cyan">12ms</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-header"><div class="card-title">网络架构</div></div>
+            <div class="card-body">
+              <div class="arch-flow">
+                <div class="arch-layer input">输入层<div class="arch-info">10维</div></div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-layer cnn">CNN<div class="arch-info">3层卷积</div></div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-layer rnn">RNN(LSTM)<div class="arch-info">128单元</div></div>
+              </div>
+              <div class="arch-flow">
+                <div class="arch-layer rnn">Attention<div class="arch-info">权重分配</div></div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-layer fc">ANN全连接<div class="arch-info">256→64</div></div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-layer output">输出层<div class="arch-info">接触角°</div></div>
+              </div>
+              <div style="margin-top:14px;font-size:11px;color:var(--muted);line-height:1.7;">
+                <div>优化器：Adam (lr=0.001)</div>
+                <div>损失函数：MSE + L2正则化</div>
+                <div>Batch Size：32 · Dropout：0.2</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">预测混淆矩阵</div><span style="font-size:11px;color:var(--muted)">验证集 N=6</span></div>
+            <div class="card-body">
+              <div class="matrix-wrap">
+                <div class="matrix">
+                  <div class="matrix-label"></div><div class="matrix-label">亲水</div><div class="matrix-label">弱亲水</div><div class="matrix-label">疏水</div>
+                  <div class="matrix-label">亲水</div>
+                  <div class="matrix-cell" style="background:rgba(63,185,80,0.3);color:#3fb950">3</div>
+                  <div class="matrix-cell" style="background:rgba(210,153,34,0.15);color:#d29922">0</div>
+                  <div class="matrix-cell" style="background:rgba(248,81,73,0.08);color:#6e7681">0</div>
+                  <div class="matrix-label">弱亲水</div>
+                  <div class="matrix-cell" style="background:rgba(210,153,34,0.15);color:#d29922">0</div>
+                  <div class="matrix-cell" style="background:rgba(63,185,80,0.3);color:#3fb950">2</div>
+                  <div class="matrix-cell" style="background:rgba(248,81,73,0.08);color:#6e7681">0</div>
+                  <div class="matrix-label">疏水</div>
+                  <div class="matrix-cell" style="background:rgba(248,81,73,0.08);color:#6e7681">0</div>
+                  <div class="matrix-cell" style="background:rgba(248,81,73,0.08);color:#6e7681">0</div>
+                  <div class="matrix-cell" style="background:rgba(63,185,80,0.3);color:#3fb950">1</div>
+                </div>
+              </div>
+              <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px;">准确率 <span style="color:var(--green);font-weight:700;">100%</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">训练日志</div><span style="font-size:11px;color:var(--muted)">实时</span></div>
+            <div class="card-body">
+              <div class="log-wrap">
+                <div class="log-line"><span class="log-time">14:23:01</span> <span class="log-info">[INFO]</span> <span class="log-text">Epoch 187/300 started</span></div>
+                <div class="log-line"><span class="log-time">14:23:15</span> <span class="log-info">[INFO]</span> <span class="log-text">Batch 32/32 - loss: 0.0342</span></div>
+                <div class="log-line"><span class="log-time">14:23:16</span> <span class="log-success">[OK]</span> <span class="log-text">Val loss: 0.0387</span></div>
+                <div class="log-line"><span class="log-time">14:23:16</span> <span class="log-info">[INFO]</span> <span class="log-text">Val R²: 0.962 | RMSE: 1.83°</span></div>
+                <div class="log-line"><span class="log-time">14:23:17</span> <span class="log-success">[OK]</span> <span class="log-text">Best model saved (val_loss=0.0387)</span></div>
+                <div class="log-line"><span class="log-time">14:23:18</span> <span class="log-info">[INFO]</span> <span class="log-text">LR adjusted: 0.001 → 0.0005</span></div>
+                <div class="log-line"><span class="log-time">14:23:22</span> <span class="log-warn">[WARN]</span> <span class="log-text">Sample FK-089: pred 62.1° / true 61.8°</span></div>
+                <div class="log-line"><span class="log-time">14:23:25</span> <span class="log-info">[INFO]</span> <span class="log-text">Epoch 188/300 started...</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== View 3: Data Coding ===== -->
+      <div class="view" id="view-coding">
+        <div class="pipeline">
+          <div class="pipe-step"><div class="pipe-icon">📡</div><div class="pipe-title">数据采集</div><div class="pipe-desc">现场实测 / 装置回传</div><div class="pipe-count" id="pipeCollect">30</div></div>
+          <div class="pipe-step active"><div class="pipe-icon">🔍</div><div class="pipe-title">数据清洗</div><div class="pipe-desc">去噪 / 异常值剔除</div><div class="pipe-count" id="pipeClean">30</div></div>
+          <div class="pipe-step"><div class="pipe-icon">🏷️</div><div class="pipe-title">标准化编码</div><div class="pipe-desc">统一编码规则</div><div class="pipe-count" id="pipeCode">30</div></div>
+          <div class="pipe-step"><div class="pipe-icon">✅</div><div class="pipe-title">入库归档</div><div class="pipe-desc">验证 / 入库</div><div class="pipe-count" id="pipeStore">24</div></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">标准化编码表</div><span style="font-size:11px;color:var(--muted)">编码格式：区块-煤阶-深度-状态</span></div>
+            <div class="card-body" style="padding:0">
+              <table class="encode-table">
+                <thead><tr><th>井号</th><th>区块</th><th>煤阶</th><th>深度</th><th>状态</th><th>完整编码</th></tr></thead>
+                <tbody id="encodeBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">数据质量评估</div></div>
+            <div class="card-body">
+              <div class="quality-row"><div class="quality-label"><span>完整性</span><span style="color:var(--green)" id="qComplete">92.3%</span></div><div class="quality-bar"><div class="quality-fill" style="width:92.3%;background:var(--green)" id="qCompleteBar"></div></div></div>
+              <div class="quality-row"><div class="quality-label"><span>准确性</span><span style="color:var(--green)" id="qAccurate">88.7%</span></div><div class="quality-bar"><div class="quality-fill" style="width:88.7%;background:var(--green)" id="qAccurateBar"></div></div></div>
+              <div class="quality-row"><div class="quality-label"><span>一致性</span><span style="color:var(--yellow)" id="qConsist">76.5%</span></div><div class="quality-bar"><div class="quality-fill" style="width:76.5%;background:var(--yellow)" id="qConsistBar"></div></div></div>
+              <div class="quality-row"><div class="quality-label"><span>时效性</span><span style="color:var(--green)">95.1%</span></div><div class="quality-bar"><div class="quality-fill" style="width:95.1%;background:var(--green)"></div></div></div>
+              <div class="quality-row"><div class="quality-label"><span>唯一性</span><span style="color:var(--green)">100%</span></div><div class="quality-bar"><div class="quality-fill" style="width:100%;background:var(--green)"></div></div></div>
+              <div style="margin-top:16px;font-size:11px;color:var(--muted);margin-bottom:8px;">编码规则说明</div>
+              <div style="font-size:11px;line-height:1.8;color:var(--ink);font-family:var(--mono);background:var(--bg2);padding:10px;border-radius:6px;border:1px solid var(--rule);">
+                <div>区块：FK=阜康 QT=鄯善 EDS=鄂尔多斯 QS=沁水 HC=韩城</div>
+                <div>煤阶：L=低阶 M=中阶 H=高阶</div>
+                <div>深度：D21=2100m D23=2300m D25=2500m D27=2700m</div>
+                <div>状态：V=已验证 P=预测补全 W=待审核</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-header"><div class="card-title">数据采集统计</div></div>
+            <div class="card-body">
+              <div class="mini-stats">
+                <div class="mini-stat"><div class="mini-stat-label">总采集</div><div class="mini-stat-value accent" id="msTotal">30</div></div>
+                <div class="mini-stat"><div class="mini-stat-label">已验证</div><div class="mini-stat-value green" id="msVerified">24</div></div>
+                <div class="mini-stat"><div class="mini-stat-label">待审核</div><div class="mini-stat-value yellow" id="msPending">2</div></div>
+                <div class="mini-stat"><div class="mini-stat-label">覆盖率</div><div class="mini-stat-value purple">100%</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">区块数据分布</div></div>
+            <div class="card-body" id="distBody"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">最近操作日志</div></div>
+            <div class="card-body" id="logBody"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== View 4: 实测数据录入 ===== -->
+      <div class="view" id="view-measure">
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">已有实测数据井数</div><div class="stat-value accent" id="mStatTotal">5</div><div class="stat-trend up">技术一 + 技术二</div></div>
+          <div class="stat-card green"><div class="stat-label">技术一（润湿性测试）</div><div class="stat-value green" id="mStatT1">4</div><div class="stat-trend">前进/后退/动态接触角</div></div>
+          <div class="stat-card purple"><div class="stat-label">技术二（微流控实验）</div><div class="stat-value purple" id="mStatT2">4</div><div class="stat-trend">最佳润湿角/排液速率</div></div>
+          <div class="stat-card yellow"><div class="stat-label">缺实测数据井</div><div class="stat-value yellow" id="mStatMiss">25</div><div class="stat-trend down">接触角仍为预测值</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">选择井并录入实测数据</div></div>
+            <div class="card-body">
+              <div class="form-group" style="margin-bottom:14px;"><div class="form-label">选择井号</div>
+                <select class="form-select" id="mWellSelect" onchange="loadMeasureForm()"></select>
+              </div>
+              <div id="measureFormArea" style="display:none;">
+                <div style="font-size:11px;color:var(--cyan);font-weight:600;margin-bottom:10px;padding:6px 10px;background:rgba(57,210,192,0.08);border-radius:4px;">技术一 · 原位动态润湿性测试</div>
+                <div class="form-grid" style="margin-bottom:12px;">
+                  <div class="form-group"><div class="form-label">前进接触角 (°)</div><input class="form-input measured" id="m_advAngle" type="number" step="0.1" placeholder="如：72.5"></div>
+                  <div class="form-group"><div class="form-label">后退接触角 (°)</div><input class="form-input measured" id="m_recAngle" type="number" step="0.1" placeholder="如：58.3"></div>
+                  <div class="form-group"><div class="form-label">动态接触角 (°)</div><input class="form-input measured" id="m_dynAngle" type="number" step="0.1" placeholder="如：65.0"></div>
+                </div>
+                <div style="font-size:11px;color:var(--cyan);font-weight:600;margin-bottom:10px;padding:6px 10px;background:rgba(57,210,192,0.08);border-radius:4px;">技术二 · 微流控实验</div>
+                <div class="form-grid" style="margin-bottom:14px;">
+                  <div class="form-group"><div class="form-label">最佳反排润湿性接触角 (°)</div><input class="form-input measured" id="m_optWetAngle" type="number" step="0.1" placeholder="如：62.0"></div>
+                  <div class="form-group"><div class="form-label">最佳排液速率 (m³/d)</div><input class="form-input measured" id="m_optDrainRate" type="number" step="0.1" placeholder="如：8.5"></div>
+                  <div class="form-group full"><div class="form-label">最佳返排策略备注</div><input class="form-input measured" id="m_drainNote" placeholder="如：分段控压，初期3m³/d，后期提至8m³/d"></div>
+                </div>
+                <button class="btn primary" onclick="saveMeasureData()" style="width:100%;">保存实测数据</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">已有实测数据概览</div></div>
+            <div class="card-body" style="padding:0;">
+              <table class="encode-table">
+                <thead><tr><th>井号</th><th>技术一</th><th>技术二</th><th>操作</th></tr></thead>
+                <tbody id="measureListBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== View 5: 数据导出 ===== -->
+      <div class="view" id="view-export">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">导出选项</div></div>
+            <div class="card-body">
+              <div class="form-group" style="margin-bottom:14px;"><div class="form-label">导出格式</div>
+                <select class="form-select" id="exportFormat"><option value="csv">CSV (.csv)</option><option value="json">JSON (.json)</option></select>
+              </div>
+              <div class="form-group" style="margin-bottom:14px;"><div class="form-label">数据范围</div>
+                <select class="form-select" id="exportRange"><option value="all">全部井数据</option><option value="verified">仅已验证井</option><option value="measured">仅含实测数据井</option><option value="pending">仅待审核井</option></select>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">导出字段</div>
+              <div id="exportFields" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;"></div>
+              <button class="btn primary" onclick="doExport()" style="width:100%;">立即导出</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">导出预览</div><span style="font-size:11px;color:var(--muted)" id="exportPreviewInfo">前5条</span></div>
+            <div class="card-body" style="padding:0;">
+              <div id="exportPreview" style="max-height:400px;overflow:auto;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header"><div class="card-title">导出历史</div></div>
+          <div class="card-body" style="padding:0;">
+            <table class="encode-table">
+              <thead><tr><th>时间</th><th>格式</th><th>范围</th><th>记录数</th><th>文件名</th><th>操作人</th></tr></thead>
+              <tbody id="exportHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== View 6: 相似井匹配引擎 ===== -->
+      <div class="view" id="view-match">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">输入目标井参数</div></div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group"><div class="form-label">埋深 (m)</div><input class="form-input" id="match_depth" type="number" value="2350"></div>
+                <div class="form-group"><div class="form-label">地层压力 (MPa)</div><input class="form-input" id="match_pressure" type="number" step="0.1" value="16.5"></div>
+                <div class="form-group"><div class="form-label">地层温度 (°C)</div><input class="form-input" id="match_temp" type="number" value="72"></div>
+                <div class="form-group"><div class="form-label">含气量 (m³/t)</div><input class="form-input" id="match_gas" type="number" step="0.1" value="15.0"></div>
+                <div class="form-group"><div class="form-label">孔隙度 (%)</div><input class="form-input" id="match_porosity" type="number" step="0.1" value="5.5"></div>
+                <div class="form-group"><div class="form-label">裂缝宽度 (μm)</div><input class="form-input" id="match_fracture" type="number" value="35"></div>
+                <div class="form-group"><div class="form-label">煤阶</div>
+                  <select class="form-select" id="match_coalrank"><option>低阶煤</option><option selected>中阶煤</option><option>高阶煤</option></select>
+                </div>
+                <div class="form-group"><div class="form-label">目标区块</div>
+                  <select class="form-select" id="match_block"><option value="">不限</option><option>新疆阜康</option><option>新疆鄯善</option><option>鄂尔多斯</option><option>沁水盆地</option><option>韩城区块</option></select>
+                </div>
+              </div>
+              <button class="btn primary" onclick="runMatch()" style="width:100%;margin-top:14px;">运行相似井匹配</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">匹配结果 TOP 5</div><span style="font-size:11px;color:var(--green)">加权欧氏距离</span></div>
+            <div class="card-body" id="matchResults" style="min-height:300px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== View 7: 训练记录 ===== -->
+      <div class="view" id="view-history">
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">总训练次数</div><div class="stat-value accent">47</div><div class="stat-trend up">累计运行</div></div>
+          <div class="stat-card green"><div class="stat-label">最优模型</div><div class="stat-value green">#047</div><div class="stat-trend up">R²=0.962</div></div>
+          <div class="stat-card purple"><div class="stat-label">平均训练时长</div><div class="stat-value purple">2.3h</div><div class="stat-trend">单次平均</div></div>
+          <div class="stat-card yellow"><div class="stat-label">模型迭代版本</div><div class="stat-value yellow">v2.1</div><div class="stat-trend">当前版本</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">训练历史记录</div></div>
+          <div class="card-body" style="padding:0;">
+            <table class="encode-table">
+              <thead><tr><th>编号</th><th>开始时间</th><th>训练时长</th><th>Epoch</th><th>训练损失</th><th>验证损失</th><th>R²</th><th>RMSE</th><th>状态</th><th>备注</th></tr></thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== View 8: 用户权限 ===== -->
+      <div class="view" id="view-users">
+        <div class="toolbar">
+          <button class="btn primary" onclick="addUser()">+ 新增用户</button>
+          <span class="toolbar-info" id="userToolbarInfo">共 6 名用户</span>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <table class="encode-table">
+              <thead><tr><th>用户</th><th>角色</th><th>所属部门</th><th>权限范围</th><th>最近登录</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== View 9: 操作日志 ===== -->
+      <div class="view" id="view-logs">
+        <div class="toolbar">
+          <button class="btn" onclick="setLogFilter('all',this)" id="logFilterAll">全部</button>
+          <button class="btn" onclick="setLogFilter('green',this)">数据操作</button>
+          <button class="btn" onclick="setLogFilter('accent',this)">模型操作</button>
+          <button class="btn" onclick="setLogFilter('yellow',this)">系统操作</button>
+          <button class="btn danger" onclick="clearLogs()">清空日志</button>
+          <span class="toolbar-info" id="logToolbarInfo"></span>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <table class="encode-table">
+              <thead><tr><th>时间</th><th>类型</th><th>操作人</th><th>操作内容</th><th>IP地址</th></tr></thead>
+              <tbody id="logsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== View 10: 系统设置 ===== -->
+      <div class="view" id="view-settings">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">模型参数配置</div></div>
+            <div class="card-body">
+              <div class="metric-row"><div class="metric-label">相似井匹配阈值</div><div style="display:flex;align-items:center;gap:8px;"><input class="form-input" style="width:80px;text-align:center;" value="75" id="set_threshold"> <span style="font-size:11px;color:var(--muted);">%</span></div></div>
+              <div class="metric-row"><div class="metric-label">接触角预测精度范围</div><div style="display:flex;align-items:center;gap:8px;"><input class="form-input" style="width:80px;text-align:center;" value="±2.0" id="set_precision"> <span style="font-size:11px;color:var(--muted);">°</span></div></div>
+              <div class="metric-row"><div class="metric-label">数据验证自动审核</div><div><select class="form-select" style="width:100px;"><option>开启</option><option>关闭</option></select></div></div>
+              <div class="metric-row"><div class="metric-label">模型自动重训周期</div><div><select class="form-select" style="width:120px;"><option>每周</option><option>每两周</option><option selected>每月</option><option>手动</option></select></div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">数据存储配置</div></div>
+            <div class="card-body">
+              <div class="metric-row"><div class="metric-label">数据存储位置</div><div class="metric-value" style="font-size:12px;">本地浏览器 (localStorage)</div></div>
+              <div class="metric-row"><div class="metric-label">当前数据量</div><div class="metric-value accent" style="font-size:14px;" id="set_dataSize">— KB</div></div>
+              <div class="metric-row"><div class="metric-label">自动备份</div><div><select class="form-select" style="width:100px;"><option selected>开启</option><option>关闭</option></select></div></div>
+              <div class="metric-row"><div class="metric-label">备份频率</div><div><select class="form-select" style="width:120px;"><option>每日</option><option selected>每周</option><option>每月</option></select></div></div>
+              <div style="margin-top:14px;display:flex;gap:8px;">
+                <button class="btn" onclick="backupData()">立即备份</button>
+                <button class="btn" onclick="restoreData()">恢复数据</button>
+                <button class="btn danger" onclick="resetData()">重置全部数据</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header"><div class="card-title">系统信息</div></div>
+          <div class="card-body">
+            <div class="metric-row"><div class="metric-label">系统版本</div><div class="metric-value" style="font-size:13px;">v2.1.0 (Build 20260731)</div></div>
+            <div class="metric-row"><div class="metric-label">运行环境</div><div class="metric-value" style="font-size:13px;">浏览器端 · 离线运行</div></div>
+            <div class="metric-row"><div class="metric-label">数据库引擎</div><div class="metric-value" style="font-size:13px;">IndexedDB / localStorage</div></div>
+            <div class="metric-row"><div class="metric-label">图表引擎</div><div class="metric-value" style="font-size:13px;">Apache ECharts 5.x</div></div>
+            <div class="metric-row"><div class="metric-label">开发团队</div><div class="metric-value" style="font-size:13px;">山东科技大学 · 探微知流创新团队</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+<!-- ===== Modal ===== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">录入新井</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><div class="form-label">井号</div><input class="form-input" id="f_id" placeholder="如：XJ-FK-128"></div>
+        <div class="form-group"><div class="form-label">区块</div>
+          <select class="form-select" id="f_block"><option>新疆阜康</option><option>新疆鄯善</option><option>鄂尔多斯</option><option>沁水盆地</option><option>韩城区块</option></select>
+        </div>
+        <div class="form-group"><div class="form-label">埋深 (m)</div><input class="form-input" id="f_depth" type="number" placeholder="如：2350"></div>
+        <div class="form-group"><div class="form-label">地层压力 (MPa)</div><input class="form-input" id="f_pressure" type="number" step="0.1" placeholder="如：16.8"></div>
+        <div class="form-group"><div class="form-label">地层温度 (°C)</div><input class="form-input" id="f_temp" type="number" placeholder="如：72"></div>
+        <div class="form-group"><div class="form-label">煤阶</div>
+          <select class="form-select" id="f_coalrank"><option>低阶煤</option><option>中阶煤</option><option>高阶煤</option></select>
+        </div>
+        <div class="form-group"><div class="form-label">含气量 (m³/t)</div><input class="form-input" id="f_gas" type="number" step="0.1" placeholder="如：15.2"></div>
+        <div class="form-group"><div class="form-label">孔隙度 (%)</div><input class="form-input" id="f_porosity" type="number" step="0.1" placeholder="如：5.8"></div>
+        <div class="form-group"><div class="form-label">裂缝宽度 (μm)</div><input class="form-input" id="f_fracture" type="number" placeholder="如：38"></div>
+        <div class="form-group"><div class="form-label">压裂液量 (m³)</div><input class="form-input" id="f_fracfluid" type="number" placeholder="如：520"></div>
+        <div class="form-group"><div class="form-label">接触角 (°)</div><input class="form-input" id="f_contact" type="number" step="0.1" placeholder="如：68.5"></div>
+        <div class="form-group"><div class="form-label">返排率 (%)</div><input class="form-input" id="f_recovery" type="number" step="0.1" placeholder="如：42.3"></div>
+        <div class="form-group full"><div class="form-label">数据状态</div>
+          <select class="form-select" id="f_status"><option value="verified">已验证（实测）</option><option value="predict">预测补全</option><option value="pending">待审核</option></select>
+        </div>
+
+        <!-- 实测数据分区 -->
+        <div class="form-section">
+          <div class="form-section-title">实测数据（可选）</div>
+          <span class="form-section-tag">填了优先用实测</span>
+        </div>
+
+        <div class="form-group full" style="font-size:11px;color:var(--cyan);font-weight:600;padding-left:4px;margin-bottom:-6px;">技术一 · 原位动态润湿性测试</div>
+        <div class="form-group"><div class="form-label">前进接触角 (°)</div><input class="form-input measured" id="f_advAngle" type="number" step="0.1" placeholder="如：72.5"></div>
+        <div class="form-group"><div class="form-label">后退接触角 (°)</div><input class="form-input measured" id="f_recAngle" type="number" step="0.1" placeholder="如：58.3"></div>
+        <div class="form-group"><div class="form-label">动态接触角 (°)</div><input class="form-input measured" id="f_dynAngle" type="number" step="0.1" placeholder="如：65.0"></div>
+        <div class="form-group"><div class="form-label">&nbsp;</div></div>
+
+        <div class="form-group full" style="font-size:11px;color:var(--cyan);font-weight:600;padding-left:4px;margin-bottom:-6px;">技术二 · 微流控实验</div>
+        <div class="form-group"><div class="form-label">最佳反排润湿性接触角 (°)</div><input class="form-input measured" id="f_optWetAngle" type="number" step="0.1" placeholder="如：62.0"></div>
+        <div class="form-group"><div class="form-label">最佳排液速率 (m³/d)</div><input class="form-input measured" id="f_optDrainRate" type="number" step="0.1" placeholder="如：8.5"></div>
+        <div class="form-group full"><div class="form-label">最佳返排策略备注</div><input class="form-input measured" id="f_drainNote" placeholder="如：分段控压，初期速率3m³/d，后期提至8m³/d"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn primary" onclick="saveWell()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Detail Modal ===== -->
+<div class="modal-overlay" id="detailOverlay">
+  <div class="modal" style="width:620px;">
+    <div class="modal-header">
+      <div class="modal-title" id="detailTitle">井数据详情</div>
+      <button class="modal-close" onclick="closeDetail()">×</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeDetail()">关闭</button>
+      <button class="btn primary" onclick="closeDetail(); editWell(document.getElementById('detailTitle').dataset.wellId);">编辑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== User Edit Modal ===== -->
+<div class="modal-overlay" id="userModalOverlay">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title" id="userModalTitle">编辑用户</div>
+      <button class="modal-close" onclick="closeUserModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:12px;background:var(--bg2);border-radius:8px;border:1px solid var(--rule);">
+        <div id="u_avatarPreview" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--accent));display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;color:#fff;flex-shrink:0;">陈</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;" id="u_namePreview">用户名</div>
+          <div style="font-size:11px;color:var(--muted);" id="u_rolePreview">角色</div>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><div class="form-label">姓名</div><input class="form-input" id="u_name" placeholder="请输入姓名" oninput="updateUserPreview()"></div>
+        <div class="form-group"><div class="form-label">工号</div><input class="form-input" id="u_empId" placeholder="如：TWZL-001"></div>
+        <div class="form-group"><div class="form-label">手机号</div><input class="form-input" id="u_phone" placeholder="如：138xxxx8888"></div>
+        <div class="form-group"><div class="form-label">邮箱</div><input class="form-input" id="u_email" placeholder="如：chen@twzl.edu.cn"></div>
+        <div class="form-group"><div class="form-label">角色</div>
+          <select class="form-select" id="u_role" onchange="updateUserPreview()"><option>超级管理员</option><option>数据管理员</option><option>模型工程师</option><option>数据分析员</option><option>审核员</option><option>访客</option></select>
+        </div>
+        <div class="form-group"><div class="form-label">所属部门</div><input class="form-input" id="u_dept" placeholder="如：探微知流团队"></div>
+        <div class="form-group full"><div class="form-label">权限范围</div><input class="form-input" id="u_perms" placeholder="如：数据录入/编辑/导出"></div>
+        <div class="form-group"><div class="form-label">账号状态</div>
+          <select class="form-select" id="u_status"><option value="online">启用（在线）</option><option value="offline">启用（离线）</option><option value="disabled">禁用</option></select>
+        </div>
+        <div class="form-group"><div class="form-label">最近登录时间</div><input class="form-input" id="u_lastLogin" placeholder="系统自动记录" disabled style="opacity:0.6;"></div>
+        <div class="form-group full"><div class="form-label">备注说明</div><input class="form-input" id="u_note" placeholder="如：项目负责人，负责全部数据管理"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeUserModal()">取消</button>
+      <button class="btn danger" id="u_toggleBtn" onclick="toggleUserStatus()">禁用账号</button>
+      <button class="btn primary" onclick="saveUser()">保存修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Toast ===== -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 初始井数据 =====
+var INITIAL_WELLS = [
+  {id:'XJ-FK-037',block:'新疆阜康',depth:2280,pressure:15.8,temp:68,coalRank:'中阶煤',gas:14.5,porosity:5.5,fracture:35,fracFluid:480,contactAngle:68.2,recovery:28.6,status:'verified',method:'分段控压返排'},
+  {id:'XJ-FK-056',block:'新疆阜康',depth:2410,pressure:17.2,temp:74,coalRank:'中阶煤',gas:16.1,porosity:6,fracture:42,fracFluid:550,contactAngle:71.5,recovery:18.9,status:'verified',method:'缓慢控压返排'},
+  {id:'XJ-FK-021',block:'新疆阜康',depth:2150,pressure:14.5,temp:65,coalRank:'中阶煤',gas:13.2,porosity:5,fracture:30,fracFluid:420,contactAngle:74.8,recovery:22.3,status:'verified',method:'分段控压返排'},
+  {id:'XJ-FK-089',block:'新疆阜康',depth:2520,pressure:18.5,temp:78,coalRank:'高阶煤',gas:17.8,porosity:4.2,fracture:25,fracFluid:620,contactAngle:62.1,recovery:16.5,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-103',block:'新疆阜康',depth:2380,pressure:16.5,temp:71,coalRank:'中阶煤',gas:15,porosity:5.8,fracture:38,fracFluid:510,contactAngle:69.7,recovery:25.1,status:'verified',method:'分段控压返排'},
+  {id:'XJ-FK-045',block:'新疆阜康',depth:2260,pressure:15.5,temp:67,coalRank:'低阶煤',gas:12.8,porosity:6.5,fracture:45,fracFluid:460,contactAngle:76.3,recovery:20.7,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-FK-078',block:'新疆阜康',depth:2460,pressure:17.8,temp:76,coalRank:'中阶煤',gas:16.5,porosity:5.2,fracture:32,fracFluid:580,contactAngle:70.8,recovery:17.2,status:'verified',method:'缓慢控压返排'},
+  {id:'XJ-FK-115',block:'新疆阜康',depth:2200,pressure:14.8,temp:64,coalRank:'低阶煤',gas:12,porosity:6.8,fracture:50,fracFluid:430,contactAngle:78.1,recovery:23.5,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-QT-033',block:'新疆鄯善',depth:2380,pressure:16,temp:70,coalRank:'中阶煤',gas:14.8,porosity:5.3,fracture:34,fracFluid:490,contactAngle:70.3,recovery:19.2,status:'predict',method:'连续低速率返排'},
+  {id:'XJ-QT-015',block:'新疆鄯善',depth:2200,pressure:14.8,temp:63,coalRank:'低阶煤',gas:12,porosity:6.8,fracture:48,fracFluid:440,contactAngle:77.5,recovery:21.5,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-QT-067',block:'新疆鄯善',depth:2550,pressure:18.2,temp:79,coalRank:'高阶煤',gas:18.2,porosity:4,fracture:22,fracFluid:640,contactAngle:58.4,recovery:14.8,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-QT-049',block:'新疆鄯善',depth:2320,pressure:15.6,temp:68,coalRank:'中阶煤',gas:14.2,porosity:5.6,fracture:37,fracFluid:500,contactAngle:72,recovery:20.8,status:'verified',method:'分段控压返排'},
+  {id:'EDS-024',block:'鄂尔多斯',depth:2100,pressure:13.5,temp:60,coalRank:'低阶煤',gas:11.5,porosity:7,fracture:52,fracFluid:400,contactAngle:79.2,recovery:23.8,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-051',block:'鄂尔多斯',depth:2250,pressure:15,temp:66,coalRank:'中阶煤',gas:14,porosity:5.6,fracture:36,fracFluid:470,contactAngle:72.6,recovery:19.6,status:'verified',method:'分段控压返排'},
+  {id:'EDS-088',block:'鄂尔多斯',depth:2480,pressure:17.5,temp:75,coalRank:'中阶煤',gas:16.8,porosity:4.8,fracture:28,fracFluid:590,contactAngle:67.4,recovery:16.2,status:'verified',method:'缓慢控压返排'},
+  {id:'EDS-112',block:'鄂尔多斯',depth:2650,pressure:19,temp:82,coalRank:'高阶煤',gas:19.5,porosity:3.8,fracture:20,fracFluid:680,contactAngle:55.3,recovery:13.5,status:'predict',method:'闭井后缓慢返排'},
+  {id:'EDS-035',block:'鄂尔多斯',depth:2180,pressure:14.2,temp:62,coalRank:'低阶煤',gas:12.2,porosity:6.5,fracture:44,fracFluid:430,contactAngle:75.8,recovery:22,status:'verified',method:'连续低速率返排'},
+  {id:'QS-019',block:'沁水盆地',depth:2050,pressure:13,temp:58,coalRank:'中阶煤',gas:12.5,porosity:6.2,fracture:40,fracFluid:430,contactAngle:76.1,recovery:22.1,status:'verified',method:'分段控压返排'},
+  {id:'QS-046',block:'沁水盆地',depth:2300,pressure:15.5,temp:69,coalRank:'高阶煤',gas:17,porosity:4.5,fracture:26,fracFluid:560,contactAngle:63.5,recovery:17.8,status:'verified',method:'缓慢控压返排'},
+  {id:'QS-073',block:'沁水盆地',depth:2180,pressure:14.2,temp:62,coalRank:'中阶煤',gas:13.8,porosity:5.4,fracture:33,fracFluid:450,contactAngle:73.2,recovery:20.4,status:'verified',method:'分段控压返排'},
+  {id:'QS-095',block:'沁水盆地',depth:2420,pressure:16.8,temp:73,coalRank:'高阶煤',gas:18.5,porosity:4,fracture:24,fracFluid:610,contactAngle:59.7,recovery:15.3,status:'verified',method:'闭井后缓慢返排'},
+  {id:'QS-028',block:'沁水盆地',depth:2120,pressure:13.8,temp:60,coalRank:'中阶煤',gas:13,porosity:5.8,fracture:38,fracFluid:440,contactAngle:74.5,recovery:21.3,status:'verified',method:'分段控压返排'},
+  {id:'HC-028',block:'韩城区块',depth:2150,pressure:14,temp:61,coalRank:'中阶煤',gas:12.8,porosity:5.7,fracture:31,fracFluid:410,contactAngle:73.4,recovery:20.9,status:'verified',method:'分段控压返排'},
+  {id:'HC-055',block:'韩城区块',depth:2350,pressure:16.2,temp:70,coalRank:'中阶煤',gas:15.5,porosity:5,fracture:29,fracFluid:520,contactAngle:68.8,recovery:18.3,status:'verified',method:'缓慢控压返排'},
+  {id:'HC-081',block:'韩城区块',depth:2280,pressure:15,temp:66,coalRank:'低阶煤',gas:13,porosity:6.3,fracture:43,fracFluid:470,contactAngle:75,recovery:21.7,status:'verified',method:'连续低速率返排'},
+  {id:'HC-104',block:'韩城区块',depth:2500,pressure:17.8,temp:77,coalRank:'高阶煤',gas:18,porosity:4.2,fracture:23,fracFluid:630,contactAngle:57.8,recovery:14.2,status:'predict',method:'闭井后缓慢返排'},
+  {id:'HC-039',block:'韩城区块',depth:2220,pressure:14.5,temp:63,coalRank:'中阶煤',gas:13.5,porosity:5.5,fracture:34,fracFluid:430,contactAngle:72.9,recovery:19.8,status:'verified',method:'分段控压返排'},
+  {id:'XJ-FK-127',block:'新疆阜康',depth:2600,pressure:19.2,temp:83,coalRank:'高阶煤',gas:20,porosity:3.6,fracture:18,fracFluid:700,contactAngle:52.9,recovery:12.8,status:'pending',method:'闭井后缓慢返排'},
+  {id:'EDS-067',block:'鄂尔多斯',depth:2350,pressure:16,temp:70,coalRank:'中阶煤',gas:15.2,porosity:5.2,fracture:31,fracFluid:500,contactAngle:70,recovery:18.7,status:'verified',method:'缓慢控压返排'},
+  {id:'QS-112',block:'沁水盆地',depth:2560,pressure:18,temp:80,coalRank:'高阶煤',gas:19,porosity:3.9,fracture:21,fracFluid:660,contactAngle:56.2,recovery:14,status:'pending',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-005',block:'新疆阜康',depth:2188.7,pressure:16.6,temp:85,coalRank:'中阶煤',gas:12.2,porosity:3.2,fracture:34,fracFluid:397,contactAngle:66.7,recovery:27.1,status:'verified',method:'分段控压返排'},
+  {id:'XJ-FK-182',block:'新疆阜康',depth:2118.7,pressure:15.1,temp:81,coalRank:'中阶煤',gas:10.8,porosity:5.1,fracture:24,fracFluid:470,contactAngle:55,recovery:30,status:'predict',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-024',block:'新疆阜康',depth:2110.4,pressure:18.7,temp:70,coalRank:'低阶煤',gas:9.2,porosity:5.5,fracture:35,fracFluid:457,contactAngle:60.6,recovery:30,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-FK-102',block:'新疆阜康',depth:2500.3,pressure:17.6,temp:65,coalRank:'中阶煤',gas:15.5,porosity:3,fracture:54,fracFluid:560,contactAngle:65.1,recovery:30,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-FK-060',block:'新疆阜康',depth:2184.1,pressure:15.5,temp:83,coalRank:'中阶煤',gas:10.9,porosity:3.9,fracture:43,fracFluid:481,contactAngle:64.8,recovery:26.3,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-FK-032',block:'新疆阜康',depth:2178.9,pressure:18.8,temp:74,coalRank:'中阶煤',gas:11.1,porosity:6.1,fracture:39,fracFluid:472,contactAngle:57.5,recovery:30,status:'pending',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-001',block:'新疆阜康',depth:2477,pressure:16.5,temp:78,coalRank:'高阶煤',gas:19.6,porosity:4.2,fracture:40,fracFluid:528,contactAngle:66.6,recovery:27.4,status:'predict',method:'分段控压返排'},
+  {id:'XJ-FK-157',block:'新疆阜康',depth:2365.9,pressure:18.8,temp:80,coalRank:'低阶煤',gas:13.3,porosity:4.3,fracture:56,fracFluid:526,contactAngle:57.6,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-077',block:'新疆阜康',depth:2633.9,pressure:18.5,temp:78,coalRank:'中阶煤',gas:16.6,porosity:4.6,fracture:43,fracFluid:648,contactAngle:57.9,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-129',block:'新疆阜康',depth:2355.2,pressure:13.5,temp:66,coalRank:'高阶煤',gas:17.5,porosity:3,fracture:30,fracFluid:512,contactAngle:66.1,recovery:25.4,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-FK-081',block:'新疆阜康',depth:2173.7,pressure:14.9,temp:76,coalRank:'低阶煤',gas:11.5,porosity:7.5,fracture:36,fracFluid:459,contactAngle:64.8,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-082',block:'新疆阜康',depth:2184.5,pressure:18.3,temp:75,coalRank:'低阶煤',gas:11.5,porosity:7.8,fracture:50,fracFluid:409,contactAngle:69.2,recovery:28.9,status:'predict',method:'连续低速率返排'},
+  {id:'XJ-FK-088',block:'新疆阜康',depth:2549.6,pressure:16.8,temp:80,coalRank:'中阶煤',gas:16.2,porosity:4.7,fracture:40,fracFluid:575,contactAngle:74,recovery:25.7,status:'pending',method:'连续低速率返排'},
+  {id:'XJ-FK-062',block:'新疆阜康',depth:2132,pressure:16.3,temp:68,coalRank:'中阶煤',gas:12.9,porosity:3.7,fracture:29,fracFluid:421,contactAngle:56.8,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-191',block:'新疆阜康',depth:2387,pressure:17.4,temp:78,coalRank:'高阶煤',gas:16.6,porosity:3,fracture:45,fracFluid:557,contactAngle:50,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-119',block:'新疆阜康',depth:2619.3,pressure:18.8,temp:71,coalRank:'中阶煤',gas:18.5,porosity:3,fracture:54,fracFluid:621,contactAngle:78.1,recovery:19.2,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-FK-017',block:'新疆阜康',depth:2292.3,pressure:14.9,temp:77,coalRank:'中阶煤',gas:12.4,porosity:4.6,fracture:34,fracFluid:512,contactAngle:68.8,recovery:25,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-097',block:'新疆阜康',depth:2546.8,pressure:17.2,temp:72,coalRank:'高阶煤',gas:20.2,porosity:3,fracture:38,fracFluid:528,contactAngle:56.7,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-195',block:'新疆阜康',depth:2323.5,pressure:19.3,temp:76,coalRank:'中阶煤',gas:14,porosity:4.4,fracture:18,fracFluid:464,contactAngle:69.7,recovery:27.7,status:'verified',method:'缓慢控压返排'},
+  {id:'XJ-FK-071',block:'新疆阜康',depth:2292.1,pressure:15.7,temp:74,coalRank:'高阶煤',gas:16.4,porosity:5.7,fracture:37,fracFluid:521,contactAngle:50,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-160',block:'新疆阜康',depth:2238,pressure:19.4,temp:77,coalRank:'中阶煤',gas:13.5,porosity:5.9,fracture:34,fracFluid:485,contactAngle:67.8,recovery:25.6,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-FK-174',block:'新疆阜康',depth:2603.5,pressure:16.1,temp:78,coalRank:'中阶煤',gas:17,porosity:4.2,fracture:51,fracFluid:585,contactAngle:57.9,recovery:30,status:'pending',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-063',block:'新疆阜康',depth:2229.2,pressure:17.2,temp:83,coalRank:'中阶煤',gas:12.7,porosity:6.7,fracture:50,fracFluid:499,contactAngle:78.6,recovery:21.6,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-FK-066',block:'新疆阜康',depth:2644.9,pressure:16.7,temp:78,coalRank:'中阶煤',gas:16.7,porosity:3,fracture:44,fracFluid:559,contactAngle:64.8,recovery:30,status:'verified',method:'分段控压返排'},
+  {id:'XJ-FK-185',block:'新疆阜康',depth:2442.5,pressure:15.1,temp:69,coalRank:'低阶煤',gas:15.1,porosity:4.7,fracture:26,fracFluid:512,contactAngle:57.1,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-033',block:'新疆阜康',depth:2461.2,pressure:17.1,temp:72,coalRank:'高阶煤',gas:19.9,porosity:4.5,fracture:47,fracFluid:531,contactAngle:50.3,recovery:30,status:'pending',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-043',block:'新疆阜康',depth:2245.3,pressure:16.9,temp:64,coalRank:'高阶煤',gas:16.3,porosity:3.7,fracture:34,fracFluid:426,contactAngle:50,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-FK-149',block:'新疆阜康',depth:2552.6,pressure:16.5,temp:64,coalRank:'高阶煤',gas:20.9,porosity:4,fracture:21,fracFluid:557,contactAngle:62.5,recovery:29.4,status:'verified',method:'分段控压返排'},
+  {id:'XJ-FK-042',block:'新疆阜康',depth:2134.6,pressure:15.2,temp:75,coalRank:'低阶煤',gas:10.8,porosity:5.2,fracture:33,fracFluid:450,contactAngle:74.1,recovery:21.1,status:'verified',method:'分段控压返排'},
+  {id:'XJ-FK-085',block:'新疆阜康',depth:2415,pressure:16.8,temp:63,coalRank:'高阶煤',gas:16.7,porosity:4.9,fracture:37,fracFluid:494,contactAngle:68.8,recovery:26,status:'predict',method:'分段控压返排'},
+  {id:'XJ-QT-163',block:'新疆鄯善',depth:2246.7,pressure:16.5,temp:68,coalRank:'低阶煤',gas:11.4,porosity:7,fracture:52,fracFluid:506,contactAngle:60.3,recovery:30,status:'verified',method:'分段控压返排'},
+  {id:'XJ-QT-166',block:'新疆鄯善',depth:2369.2,pressure:15.9,temp:78,coalRank:'中阶煤',gas:13.4,porosity:3.8,fracture:33,fracFluid:512,contactAngle:78,recovery:20.3,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-QT-036',block:'新疆鄯善',depth:2460.3,pressure:15.1,temp:70,coalRank:'高阶煤',gas:18.1,porosity:3,fracture:41,fracFluid:544,contactAngle:67.1,recovery:28.8,status:'predict',method:'连续低速率返排'},
+  {id:'XJ-QT-005',block:'新疆鄯善',depth:2200.5,pressure:15.7,temp:69,coalRank:'高阶煤',gas:16.1,porosity:5.9,fracture:21,fracFluid:446,contactAngle:70.3,recovery:25,status:'verified',method:'分段控压返排'},
+  {id:'XJ-QT-046',block:'新疆鄯善',depth:2171,pressure:15.9,temp:73,coalRank:'低阶煤',gas:9.8,porosity:8.1,fracture:58,fracFluid:427,contactAngle:60.1,recovery:30,status:'verified',method:'缓慢控压返排'},
+  {id:'XJ-QT-194',block:'新疆鄯善',depth:2572.2,pressure:15.1,temp:80,coalRank:'高阶煤',gas:19.9,porosity:3,fracture:15,fracFluid:625,contactAngle:60.7,recovery:28.6,status:'predict',method:'连续低速率返排'},
+  {id:'XJ-QT-080',block:'新疆鄯善',depth:2349,pressure:17.8,temp:80,coalRank:'低阶煤',gas:11.5,porosity:5.4,fracture:42,fracFluid:522,contactAngle:61.5,recovery:30,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-QT-173',block:'新疆鄯善',depth:2376.5,pressure:16.3,temp:61,coalRank:'高阶煤',gas:18.4,porosity:4.7,fracture:43,fracFluid:484,contactAngle:55.2,recovery:30,status:'predict',method:'闭井后缓慢返排'},
+  {id:'XJ-QT-142',block:'新疆鄯善',depth:2291.3,pressure:17.1,temp:76,coalRank:'高阶煤',gas:15.3,porosity:4,fracture:15,fracFluid:466,contactAngle:65.5,recovery:27.6,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-QT-128',block:'新疆鄯善',depth:2249.1,pressure:15.1,temp:75,coalRank:'低阶煤',gas:12.4,porosity:6.7,fracture:46,fracFluid:430,contactAngle:75.9,recovery:24.4,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-QT-061',block:'新疆鄯善',depth:2207.2,pressure:16,temp:61,coalRank:'高阶煤',gas:15.7,porosity:3.6,fracture:29,fracFluid:492,contactAngle:68.7,recovery:27.8,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-QT-057',block:'新疆鄯善',depth:2558.3,pressure:17.6,temp:71,coalRank:'中阶煤',gas:16.4,porosity:3.7,fracture:36,fracFluid:534,contactAngle:63.1,recovery:28.8,status:'pending',method:'连续低速率返排'},
+  {id:'XJ-QT-117',block:'新疆鄯善',depth:2323.5,pressure:14.4,temp:69,coalRank:'低阶煤',gas:11.9,porosity:6.8,fracture:30,fracFluid:449,contactAngle:59.2,recovery:30,status:'predict',method:'闭井后缓慢返排'},
+  {id:'XJ-QT-125',block:'新疆鄯善',depth:2521,pressure:14.4,temp:66,coalRank:'高阶煤',gas:20.5,porosity:3,fracture:16,fracFluid:529,contactAngle:60.099999999999994,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-QT-170',block:'新疆鄯善',depth:2237.9,pressure:15.8,temp:63,coalRank:'低阶煤',gas:11,porosity:4.6,fracture:23,fracFluid:419,contactAngle:74.6,recovery:23.4,status:'predict',method:'分段控压返排'},
+  {id:'XJ-QT-113',block:'新疆鄯善',depth:2447.5,pressure:14.4,temp:70,coalRank:'低阶煤',gas:13,porosity:4.3,fracture:33,fracFluid:524,contactAngle:64,recovery:29.9,status:'pending',method:'缓慢控压返排'},
+  {id:'XJ-QT-029',block:'新疆鄯善',depth:2235.2,pressure:14.6,temp:67,coalRank:'中阶煤',gas:14,porosity:3.7,fracture:32,fracFluid:511,contactAngle:68.6,recovery:24,status:'predict',method:'连续低速率返排'},
+  {id:'XJ-QT-026',block:'新疆鄯善',depth:2459.4,pressure:15,temp:74,coalRank:'中阶煤',gas:15.8,porosity:3.1,fracture:39,fracFluid:585,contactAngle:67.4,recovery:28.6,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-QT-017',block:'新疆鄯善',depth:2315.8,pressure:14.8,temp:62,coalRank:'低阶煤',gas:12.5,porosity:4.1,fracture:39,fracFluid:486,contactAngle:72.5,recovery:22.9,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-QT-095',block:'新疆鄯善',depth:2420.9,pressure:15.6,temp:60,coalRank:'高阶煤',gas:18,porosity:3.8,fracture:15,fracFluid:545,contactAngle:62.7,recovery:29.6,status:'verified',method:'缓慢控压返排'},
+  {id:'XJ-QT-144',block:'新疆鄯善',depth:2339.4,pressure:14.3,temp:64,coalRank:'中阶煤',gas:13.6,porosity:3.5,fracture:25,fracFluid:527,contactAngle:66.6,recovery:28,status:'verified',method:'连续低速率返排'},
+  {id:'XJ-QT-076',block:'新疆鄯善',depth:2197.3,pressure:15.2,temp:62,coalRank:'中阶煤',gas:12.1,porosity:5.1,fracture:22,fracFluid:428,contactAngle:79.5,recovery:17.6,status:'predict',method:'连续低速率返排'},
+  {id:'XJ-QT-122',block:'新疆鄯善',depth:2456.6,pressure:16.4,temp:68,coalRank:'高阶煤',gas:18.3,porosity:3,fracture:27,fracFluid:536,contactAngle:62.5,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'XJ-QT-056',block:'新疆鄯善',depth:2466.5,pressure:15,temp:81,coalRank:'高阶煤',gas:19.2,porosity:3.2,fracture:30,fracFluid:559,contactAngle:59,recovery:30,status:'pending',method:'闭井后缓慢返排'},
+  {id:'XJ-QT-063',block:'新疆鄯善',depth:2526.5,pressure:16.7,temp:60,coalRank:'中阶煤',gas:16,porosity:3,fracture:54,fracFluid:521,contactAngle:78.8,recovery:20.9,status:'predict',method:'连续低速率返排'},
+  {id:'EDS-006',block:'鄂尔多斯',depth:2084.5,pressure:13.7,temp:77,coalRank:'低阶煤',gas:8.9,porosity:7.7,fracture:57,fracFluid:369,contactAngle:63.8,recovery:30,status:'predict',method:'分段控压返排'},
+  {id:'EDS-110',block:'鄂尔多斯',depth:2334.2,pressure:16.1,temp:62,coalRank:'低阶煤',gas:13.9,porosity:4.2,fracture:30,fracFluid:515,contactAngle:61.3,recovery:29.5,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-029',block:'鄂尔多斯',depth:2339.2,pressure:13,temp:83,coalRank:'低阶煤',gas:13.3,porosity:6.1,fracture:24,fracFluid:480,contactAngle:75.8,recovery:22.1,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-118',block:'鄂尔多斯',depth:2450.8,pressure:16.8,temp:76,coalRank:'中阶煤',gas:14.2,porosity:4.8,fracture:45,fracFluid:524,contactAngle:76.5,recovery:21.9,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-073',block:'鄂尔多斯',depth:2142.1,pressure:18.4,temp:59,coalRank:'中阶煤',gas:11.1,porosity:3.6,fracture:29,fracFluid:445,contactAngle:58.6,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-130',block:'鄂尔多斯',depth:2590.7,pressure:19.4,temp:83,coalRank:'高阶煤',gas:20,porosity:3,fracture:25,fracFluid:636,contactAngle:50,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-032',block:'鄂尔多斯',depth:2686.8,pressure:16.6,temp:70,coalRank:'高阶煤',gas:21.9,porosity:3,fracture:45,fracFluid:640,contactAngle:59.400000000000006,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-022',block:'鄂尔多斯',depth:2211.1,pressure:17.7,temp:62,coalRank:'高阶煤',gas:14.2,porosity:3,fracture:15,fracFluid:468,contactAngle:50,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-109',block:'鄂尔多斯',depth:2563.5,pressure:17.2,temp:59,coalRank:'中阶煤',gas:17.4,porosity:3,fracture:37,fracFluid:537,contactAngle:65.1,recovery:28.5,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-098',block:'鄂尔多斯',depth:2414.2,pressure:15,temp:77,coalRank:'中阶煤',gas:16.2,porosity:3,fracture:33,fracFluid:534,contactAngle:73.6,recovery:21,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-162',block:'鄂尔多斯',depth:2441.2,pressure:16.2,temp:64,coalRank:'低阶煤',gas:14.5,porosity:3.3,fracture:46,fracFluid:532,contactAngle:81.3,recovery:18.4,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-152',block:'鄂尔多斯',depth:2627.4,pressure:14.1,temp:59,coalRank:'高阶煤',gas:20.8,porosity:3,fracture:27,fracFluid:643,contactAngle:66.3,recovery:27.3,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-062',block:'鄂尔多斯',depth:2419.8,pressure:14.4,temp:62,coalRank:'中阶煤',gas:14.5,porosity:3,fracture:19,fracFluid:546,contactAngle:76,recovery:22.6,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-038',block:'鄂尔多斯',depth:2127.6,pressure:15.7,temp:67,coalRank:'中阶煤',gas:11.4,porosity:5.6,fracture:47,fracFluid:461,contactAngle:68.9,recovery:28.5,status:'verified',method:'分段控压返排'},
+  {id:'EDS-012',block:'鄂尔多斯',depth:2083.1,pressure:18.3,temp:68,coalRank:'低阶煤',gas:8.1,porosity:4.6,fracture:45,fracFluid:429,contactAngle:76.2,recovery:23.7,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-108',block:'鄂尔多斯',depth:2216.8,pressure:15.5,temp:65,coalRank:'低阶煤',gas:11.8,porosity:5.7,fracture:27,fracFluid:497,contactAngle:62.8,recovery:28.5,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-187',block:'鄂尔多斯',depth:2320.4,pressure:17.4,temp:70,coalRank:'中阶煤',gas:14.2,porosity:4.2,fracture:30,fracFluid:507,contactAngle:59.9,recovery:29.4,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-166',block:'鄂尔多斯',depth:2646.8,pressure:17.8,temp:79,coalRank:'高阶煤',gas:22.1,porosity:3,fracture:15,fracFluid:614,contactAngle:50,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-111',block:'鄂尔多斯',depth:2095.6,pressure:18.2,temp:71,coalRank:'中阶煤',gas:9.8,porosity:4.2,fracture:30,fracFluid:432,contactAngle:64.5,recovery:29.4,status:'pending',method:'分段控压返排'},
+  {id:'EDS-003',block:'鄂尔多斯',depth:2296.6,pressure:14.2,temp:81,coalRank:'高阶煤',gas:15.5,porosity:3.5,fracture:44,fracFluid:480,contactAngle:56.099999999999994,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-154',block:'鄂尔多斯',depth:2077.1,pressure:15.7,temp:74,coalRank:'低阶煤',gas:8.4,porosity:7.4,fracture:38,fracFluid:364,contactAngle:65.2,recovery:26.5,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-018',block:'鄂尔多斯',depth:2113.7,pressure:14.8,temp:84,coalRank:'低阶煤',gas:8.8,porosity:7.4,fracture:57,fracFluid:447,contactAngle:67.9,recovery:25.5,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-042',block:'鄂尔多斯',depth:2424,pressure:17,temp:74,coalRank:'中阶煤',gas:14.5,porosity:4.7,fracture:52,fracFluid:501,contactAngle:76.1,recovery:22,status:'verified',method:'连续低速率返排'},
+  {id:'EDS-168',block:'鄂尔多斯',depth:2138.7,pressure:16.1,temp:79,coalRank:'低阶煤',gas:10.6,porosity:5.7,fracture:36,fracFluid:444,contactAngle:70.7,recovery:23.3,status:'verified',method:'分段控压返排'},
+  {id:'EDS-063',block:'鄂尔多斯',depth:2409.4,pressure:19.3,temp:75,coalRank:'中阶煤',gas:16.4,porosity:5.9,fracture:42,fracFluid:530,contactAngle:55.8,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'EDS-136',block:'鄂尔多斯',depth:2102.5,pressure:13.6,temp:79,coalRank:'低阶煤',gas:9.1,porosity:6.5,fracture:56,fracFluid:457,contactAngle:65,recovery:29.7,status:'pending',method:'缓慢控压返排'},
+  {id:'EDS-165',block:'鄂尔多斯',depth:2182.1,pressure:16.7,temp:63,coalRank:'中阶煤',gas:13.3,porosity:4.2,fracture:21,fracFluid:450,contactAngle:56.6,recovery:30,status:'pending',method:'闭井后缓慢返排'},
+  {id:'EDS-196',block:'鄂尔多斯',depth:2548.9,pressure:14.4,temp:66,coalRank:'高阶煤',gas:19.1,porosity:3.9,fracture:15,fracFluid:525,contactAngle:65.2,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'QS-070',block:'沁水盆地',depth:2119.4,pressure:14.6,temp:76,coalRank:'低阶煤',gas:8.9,porosity:7,fracture:29,fracFluid:470,contactAngle:76.2,recovery:24.4,status:'verified',method:'连续低速率返排'},
+  {id:'QS-194',block:'沁水盆地',depth:2388.1,pressure:14.1,temp:70,coalRank:'高阶煤',gas:18.3,porosity:3.5,fracture:16,fracFluid:558,contactAngle:69.5,recovery:28,status:'verified',method:'闭井后缓慢返排'},
+  {id:'QS-005',block:'沁水盆地',depth:2451.4,pressure:16.8,temp:70,coalRank:'高阶煤',gas:19.4,porosity:3,fracture:44,fracFluid:505,contactAngle:71.9,recovery:24,status:'predict',method:'分段控压返排'},
+  {id:'QS-077',block:'沁水盆地',depth:2240.4,pressure:12.8,temp:79,coalRank:'高阶煤',gas:15.2,porosity:5.6,fracture:16,fracFluid:445,contactAngle:68.2,recovery:27,status:'pending',method:'闭井后缓慢返排'},
+  {id:'QS-024',block:'沁水盆地',depth:2082.9,pressure:16.2,temp:80,coalRank:'中阶煤',gas:11.1,porosity:5,fracture:49,fracFluid:419,contactAngle:69.4,recovery:24.4,status:'predict',method:'连续低速率返排'},
+  {id:'QS-045',block:'沁水盆地',depth:2178.3,pressure:14.3,temp:71,coalRank:'低阶煤',gas:9.4,porosity:6.7,fracture:38,fracFluid:457,contactAngle:81.9,recovery:21.6,status:'verified',method:'连续低速率返排'},
+  {id:'QS-104',block:'沁水盆地',depth:2522.2,pressure:14.3,temp:59,coalRank:'高阶煤',gas:20.3,porosity:3,fracture:21,fracFluid:554,contactAngle:61.3,recovery:29.9,status:'verified',method:'分段控压返排'},
+  {id:'QS-085',block:'沁水盆地',depth:2248.5,pressure:17,temp:58,coalRank:'低阶煤',gas:11.4,porosity:5.8,fracture:54,fracFluid:512,contactAngle:79,recovery:20.4,status:'predict',method:'连续低速率返排'},
+  {id:'QS-043',block:'沁水盆地',depth:2361.2,pressure:13.9,temp:67,coalRank:'高阶煤',gas:17.8,porosity:3.3,fracture:46,fracFluid:522,contactAngle:52.1,recovery:30,status:'pending',method:'闭井后缓慢返排'},
+  {id:'QS-111',block:'沁水盆地',depth:2187.5,pressure:13.2,temp:57,coalRank:'低阶煤',gas:11.1,porosity:7.9,fracture:47,fracFluid:465,contactAngle:58.8,recovery:30,status:'pending',method:'闭井后缓慢返排'},
+  {id:'QS-011',block:'沁水盆地',depth:2086.6,pressure:12.9,temp:60,coalRank:'中阶煤',gas:12.3,porosity:5.2,fracture:38,fracFluid:454,contactAngle:56.3,recovery:30,status:'predict',method:'闭井后缓慢返排'},
+  {id:'QS-013',block:'沁水盆地',depth:2170.3,pressure:13.3,temp:79,coalRank:'低阶煤',gas:9.8,porosity:4.9,fracture:40,fracFluid:475,contactAngle:75.2,recovery:21,status:'verified',method:'连续低速率返排'},
+  {id:'QS-143',block:'沁水盆地',depth:2077.7,pressure:13.8,temp:74,coalRank:'中阶煤',gas:10.9,porosity:6.6,fracture:19,fracFluid:389,contactAngle:69.3,recovery:25.1,status:'pending',method:'分段控压返排'},
+  {id:'QS-053',block:'沁水盆地',depth:2349.8,pressure:17,temp:63,coalRank:'低阶煤',gas:13.2,porosity:3.6,fracture:51,fracFluid:454,contactAngle:58.2,recovery:30,status:'verified',method:'闭井后缓慢返排'},
+  {id:'QS-113',block:'沁水盆地',depth:2202.1,pressure:16.6,temp:58,coalRank:'低阶煤',gas:12.3,porosity:5.3,fracture:46,fracFluid:437,contactAngle:65.7,recovery:26.3,status:'verified',method:'连续低速率返排'}
+];
+
+// ===== 状态管理 =====
+var wells = [];
+var currentFilter = 'all';
+var searchQuery = '';
+var currentPage = 1;
+var pageSize = 12;
+var editingId = null;
+var activityLog = [];
+
+// ===== 云端数据同步 (JSONBin.io) =====
+var JSONBIN_BIN_ID = '6a6ca36eda38895dfea897bb';
+var JSONBIN_API_KEY = '$2a$10$lws6/x56KkmoPeIDeX5sNO9/hX/oC9GahnO0gP31nxaD6AuFYJSem';
+var JSONBIN_URL = 'https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID;
+var cloudSyncing = false; // 防止重复写入
+
+// 从云端加载井数据
+function loadFromCloud(callback) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', JSONBIN_URL + '/latest', true);
+  xhr.setRequestHeader('X-Master-Key', JSONBIN_API_KEY);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        try {
+          var resp = JSON.parse(xhr.responseText);
+          if (resp.record && resp.record.wells && resp.record.wells.length) {
+            wells = resp.record.wells;
+            // 同步到本地缓存
+            try { localStorage.setItem('cbm_wells', JSON.stringify(wells)); } catch(e) {}
+            if (callback) callback(true);
+            return;
+          }
+        } catch(e) { console.error('Parse error:', e); }
+      }
+      if (callback) callback(false);
+    }
+  };
+  xhr.onerror = function() { if (callback) callback(false); };
+  xhr.send();
+}
+
+// 保存井数据到云端
+function saveToCloud() {
+  if (cloudSyncing) return;
+  cloudSyncing = true;
+  var data = {
+    wells: wells,
+    lastUpdated: new Date().toISOString(),
+    totalWells: wells.length
+  };
+  var xhr = new XMLHttpRequest();
+  xhr.open('PUT', JSONBIN_URL, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.setRequestHeader('X-Master-Key', JSONBIN_API_KEY);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      cloudSyncing = false;
+      if (xhr.status === 200) {
+        console.log('Cloud sync: SUCCESS (' + wells.length + ' wells)');
+      } else {
+        console.warn('Cloud sync: FAILED (status ' + xhr.status + ')');
+      }
+    }
+  };
+  xhr.send(JSON.stringify(data));
+}
+
+// ===== 初始化 =====
+function init() {
+  // 先用本地缓存快速渲染
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem('cbm_wells')); } catch(e) {}
+  wells = saved && saved.length ? saved : JSON.parse(JSON.stringify(INITIAL_WELLS));
+  var savedLog = null;
+  try { savedLog = JSON.parse(localStorage.getItem('cbm_log')); } catch(e) {}
+  activityLog = savedLog || [
+    {type:'green',text:'系统初始化完成，加载'+wells.length+'口井数据',time:'刚刚'},
+    {type:'accent',text:'模型 #047 训练数据集已更新',time:'5小时前'},
+    {type:'green',text:'本月新增数据采集完成',time:'3小时前'}
+  ];
+  // 加载用户数据
+  var savedUsers = null;
+  try { savedUsers = JSON.parse(localStorage.getItem('cbm_users')); } catch(e) {}
+  if (savedUsers && savedUsers.length) users = savedUsers;
+  renderAll();
+  // 从云端同步最新数据
+  loadFromCloud(function(success) {
+    if (success) {
+      renderAll();
+      addLog('accent','已从云端同步 ' + wells.length + ' 口井数据');
+    }
+  });
+}
+
+function saveData() {
+  try {
+    localStorage.setItem('cbm_wells', JSON.stringify(wells));
+    localStorage.setItem('cbm_log', JSON.stringify(activityLog.slice(0,20)));
+    localStorage.setItem('cbm_users', JSON.stringify(users));
+  } catch(e) {}
+  // 同步到云端
+  saveToCloud();
+}
+
+// ===== 视图切换 =====
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  var titles = {
+    db:['井数据库管理','数据管理 / 井数据库 / 全部井'],
+    model:['接触角预测模型','模型中心 / 接触角预测模型 / 训练 #047'],
+    coding:['数据编码审核','数据管理 / 数据编码审核 / 全部'],
+    measure:['实测数据录入','数据管理 / 实测数据录入'],
+    export:['数据导出','数据管理 / 数据导出'],
+    match:['相似井匹配引擎','模型中心 / 相似井匹配引擎'],
+    history:['训练记录','模型中心 / 训练记录 / 全部'],
+    users:['用户权限','系统 / 用户权限 / 全部'],
+    logs:['操作日志','系统 / 操作日志 / 全部'],
+    settings:['系统设置','系统 / 系统设置']
+  };
+  document.getElementById('topbarTitle').textContent = titles[view][0];
+  document.getElementById('topbarCrumb').textContent = titles[view][1];
+  var navMap = {db:'nav-db',model:'nav-model',coding:'nav-coding',measure:'nav-measure',export:'nav-export',match:'nav-match',history:'nav-history',users:'nav-users',logs:'nav-logs',settings:'nav-settings'};
+  var navEl = document.getElementById(navMap[view]);
+  if (navEl) navEl.classList.add('active');
+  if (view === 'model') setTimeout(renderLossChart, 100);
+  if (view === 'coding') renderCodingPage();
+  if (view === 'measure') renderMeasurePage();
+  if (view === 'export') renderExportPage();
+  if (view === 'match') runMatch();
+  if (view === 'history') renderHistoryPage();
+  if (view === 'users') renderUsersPage();
+  if (view === 'logs') renderLogsPage();
+  if (view === 'settings') renderSettingsPage();
+}
+
+// ===== 筛选与搜索 =====
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
+  el.classList.add('active');
+  currentPage = 1;
+  renderTable();
+}
+function handleSearch() {
+  searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+  currentPage = 1;
+  renderTable();
+}
+function getFilteredWells() {
+  return wells.filter(function(w) {
+    var matchFilter = currentFilter === 'all' || w.block.indexOf(currentFilter) >= 0;
+    var matchSearch = !searchQuery || w.id.toLowerCase().indexOf(searchQuery) >= 0 || w.block.toLowerCase().indexOf(searchQuery) >= 0;
+    return matchFilter && matchSearch;
+  });
+}
+
+// ===== 渲染表格 =====
+function renderTable() {
+  var filtered = getFilteredWells();
+  var totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  if (currentPage > totalPages) currentPage = totalPages;
+  var start = (currentPage - 1) * pageSize;
+  var pageWells = filtered.slice(start, start + pageSize);
+  var statusMap = {verified:{cls:'verified',txt:'✓ 已验证'},predict:{cls:'predict',txt:'○ 预测补全'},pending:{cls:'pending',txt:'⚠ 待审核'}};
+  var html = '';
+  pageWells.forEach(function(w) {
+    var s = statusMap[w.status];
+    html += '<tr><td style="color:var(--accent)">'+w.id+'</td><td>'+w.block+'</td><td>'+w.depth+'</td><td>'+w.pressure+'</td><td>'+w.temp+'</td><td>'+w.coalRank+'</td><td>'+w.gas+'</td><td>'+w.porosity+'</td><td>'+w.fracture+'</td><td>'+w.contactAngle+'</td><td>'+w.recovery+'</td><td><span class="tag '+s.cls+'">'+s.txt+'</span></td><td><div class="row-actions"><button class="row-btn" onclick="viewDetail(\''+w.id+'\')" title="详情" style="border-color:rgba(57,210,192,0.3);color:var(--cyan);">⊙</button><button class="row-btn" onclick="editWell(\''+w.id+'\')" title="编辑">✎</button><button class="row-btn del" onclick="deleteWell(\''+w.id+'\')" title="删除">✕</button></div></td></tr>';
+  });
+  if (!pageWells.length) html = '<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--muted);">暂无匹配数据</td></tr>';
+  document.getElementById('tableBody').innerHTML = html;
+  document.getElementById('pageInfo').textContent = '显示第 '+(start+1)+'-'+Math.min(start+pageSize,filtered.length)+' 条，共 '+filtered.length+' 条';
+  var btnsHtml = '<button class="page-btn" onclick="goPage('+(currentPage-1)+')" '+(currentPage<=1?'disabled':'')+'>‹</button>';
+  for (var i=1; i<=totalPages; i++) {
+    if (i===1 || i===totalPages || (i>=currentPage-1 && i<=currentPage+1)) {
+      btnsHtml += '<button class="page-btn '+(i===currentPage?'active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
+    } else if (i===currentPage-2 || i===currentPage+2) {
+      btnsHtml += '<span class="page-btn" style="border:none;background:none;cursor:default;">…</span>';
+    }
+  }
+  btnsHtml += '<button class="page-btn" onclick="goPage('+(currentPage+1)+')" '+(currentPage>=totalPages?'disabled':'')+'>›</button>';
+  document.getElementById('pageBtns').innerHTML = btnsHtml;
+  document.getElementById('toolbarInfo').textContent = '共 '+filtered.length+' 条记录';
+}
+function goPage(p) { currentPage = p; renderTable(); }
+
+// ===== 统计 =====
+function renderStats() {
+  var total = wells.length;
+  var verified = wells.filter(function(w){return w.status==='verified';}).length;
+  var predict = wells.filter(function(w){return w.status==='predict';}).length;
+  var pending = wells.filter(function(w){return w.status==='pending';}).length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statVerified').textContent = verified;
+  document.getElementById('statVerifiedRate').textContent = '验证率 '+(total?Math.round(verified/total*1000)/10:0).toFixed(1)+'%';
+  document.getElementById('statPredict').textContent = predict;
+  document.getElementById('statPending').textContent = pending;
+  document.getElementById('navBadge').textContent = total;
+}
+
+// ===== 渲染全部 =====
+function renderAll() {
+  renderStats();
+  renderTable();
+  renderCodingPage();
+}
+
+// ===== 实测数据录入页 =====
+function renderMeasurePage() {
+  var select = document.getElementById('mWellSelect');
+  var html = '<option value="">— 选择井号 —</option>';
+  wells.forEach(function(w) {
+    var hasM = w.advAngle || w.optWetAngle;
+    html += '<option value="'+w.id+'">'+w.id+' ('+w.block+(hasM?' · 已有实测':'')+')'+'</option>';
+  });
+  select.innerHTML = html;
+  var hasM = wells.filter(function(w){return w.advAngle||w.recAngle||w.dynAngle||w.optWetAngle||w.optDrainRate||w.drainNote;});
+  var hasT1 = wells.filter(function(w){return w.advAngle||w.recAngle||w.dynAngle;});
+  var hasT2 = wells.filter(function(w){return w.optWetAngle||w.optDrainRate||w.drainNote;});
+  document.getElementById('mStatTotal').textContent = hasM.length;
+  document.getElementById('mStatT1').textContent = hasT1.length;
+  document.getElementById('mStatT2').textContent = hasT2.length;
+  document.getElementById('mStatMiss').textContent = wells.length - hasM.length;
+  var bodyHtml = '';
+  if (!hasM.length) {
+    bodyHtml = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);">暂无实测数据</td></tr>';
+  } else {
+    hasM.forEach(function(w) {
+      var t1 = w.advAngle ? '<span style="color:var(--green);">✓ '+(w.advAngle)+'°</span>' : '<span style="color:var(--muted2);">—</span>';
+      var t2 = w.optWetAngle ? '<span style="color:var(--green);">✓ '+(w.optWetAngle)+'°</span>' : '<span style="color:var(--muted2);">—</span>';
+      bodyHtml += '<tr><td style="color:var(--accent);">'+w.id+'</td><td>'+t1+'</td><td>'+t2+'</td><td><button class="row-btn" onclick="loadMeasureById(\''+w.id+'\')" style="border-color:rgba(57,210,192,0.3);color:var(--cyan);">✎</button></td></tr>';
+    });
+  }
+  document.getElementById('measureListBody').innerHTML = bodyHtml;
+}
+function loadMeasureForm() {
+  var id = document.getElementById('mWellSelect').value;
+  if (!id) { document.getElementById('measureFormArea').style.display = 'none'; return; }
+  loadMeasureById(id);
+}
+function loadMeasureById(id) {
+  var w = wells.find(function(x){return x.id===id;});
+  if (!w) return;
+  document.getElementById('mWellSelect').value = id;
+  document.getElementById('m_advAngle').value = w.advAngle||'';
+  document.getElementById('m_recAngle').value = w.recAngle||'';
+  document.getElementById('m_dynAngle').value = w.dynAngle||'';
+  document.getElementById('m_optWetAngle').value = w.optWetAngle||'';
+  document.getElementById('m_optDrainRate').value = w.optDrainRate||'';
+  document.getElementById('m_drainNote').value = w.drainNote||'';
+  document.getElementById('measureFormArea').style.display = 'block';
+}
+function saveMeasureData() {
+  var id = document.getElementById('mWellSelect').value;
+  if (!id) { toast('请先选择井号','error'); return; }
+  var w = wells.find(function(x){return x.id===id;});
+  if (!w) return;
+  w.advAngle = parseFloat(document.getElementById('m_advAngle').value)||null;
+  w.recAngle = parseFloat(document.getElementById('m_recAngle').value)||null;
+  w.dynAngle = parseFloat(document.getElementById('m_dynAngle').value)||null;
+  w.optWetAngle = parseFloat(document.getElementById('m_optWetAngle').value)||null;
+  w.optDrainRate = parseFloat(document.getElementById('m_optDrainRate').value)||null;
+  w.drainNote = document.getElementById('m_drainNote').value.trim()||'';
+  saveData(); renderMeasurePage(); addLog('green','井 '+id+' 实测数据已保存');
+  toast('实测数据保存成功');
+}
+
+// ===== 数据导出页 =====
+var exportHistory = [];
+function renderExportPage() {
+  var fields = [
+    {key:'id',label:'井号',checked:true},{key:'block',label:'区块',checked:true},
+    {key:'depth',label:'埋深',checked:true},{key:'pressure',label:'压力',checked:true},
+    {key:'temp',label:'温度',checked:true},{key:'coalRank',label:'煤阶',checked:true},
+    {key:'gas',label:'含气量',checked:true},{key:'porosity',label:'孔隙度',checked:true},
+    {key:'fracture',label:'裂缝',checked:true},{key:'fracFluid',label:'压裂液量',checked:false},
+    {key:'contactAngle',label:'接触角',checked:true},{key:'recovery',label:'返排率',checked:true},
+    {key:'status',label:'状态',checked:true},{key:'method',label:'返排方式',checked:false},
+    {key:'advAngle',label:'前进接触角',checked:false},{key:'recAngle',label:'后退接触角',checked:false},
+    {key:'dynAngle',label:'动态接触角',checked:false},{key:'optWetAngle',label:'最佳润湿角',checked:false},
+    {key:'optDrainRate',label:'排液速率',checked:false},{key:'drainNote',label:'返排备注',checked:false}
+  ];
+  var fHtml = '';
+  fields.forEach(function(f) {
+    fHtml += '<span class="filter-chip '+(f.checked?'active':'')+'" onclick="this.classList.toggle(\'active\');renderExportPreview();" data-field="'+f.key+'">'+f.label+'</span>';
+  });
+  document.getElementById('exportFields').innerHTML = fHtml;
+  renderExportPreview();
+  var hHtml = '';
+  if (!exportHistory.length) {
+    hHtml = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">暂无导出记录</td></tr>';
+  } else {
+    exportHistory.slice(0,10).forEach(function(h) {
+      hHtml += '<tr><td>'+h.time+'</td><td>'+h.format+'</td><td>'+h.range+'</td><td>'+h.count+'</td><td style="color:var(--accent);">'+h.filename+'</td><td>'+h.user+'</td></tr>';
+    });
+  }
+  document.getElementById('exportHistoryBody').innerHTML = hHtml;
+}
+function renderExportPreview() {
+  var range = document.getElementById('exportRange').value;
+  var data = getExportData(range);
+  var selectedFields = [];
+  document.querySelectorAll('#exportFields .filter-chip.active').forEach(function(el) {
+    selectedFields.push(el.dataset.field);
+  });
+  var labels = {id:'井号',block:'区块',depth:'埋深',pressure:'压力',temp:'温度',coalRank:'煤阶',gas:'含气量',porosity:'孔隙度',fracture:'裂缝',fracFluid:'压裂液量',contactAngle:'接触角',recovery:'返排率',status:'状态',method:'返排方式',advAngle:'前进角',recAngle:'后退角',dynAngle:'动态角',optWetAngle:'最佳润湿角',optDrainRate:'排液速率',drainNote:'返排备注'};
+  var html = '<table class="encode-table"><thead><tr>';
+  selectedFields.forEach(function(f) { html += '<th>'+(labels[f]||f)+'</th>'; });
+  html += '</tr></thead><tbody>';
+  data.slice(0,5).forEach(function(w) {
+    html += '<tr>';
+    selectedFields.forEach(function(f) {
+      var v = w[f]; if (v === null || v === undefined) v = '—';
+      html += '<td>'+v+'</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('exportPreview').innerHTML = html;
+  document.getElementById('exportPreviewInfo').textContent = '前'+Math.min(5,data.length)+'条 / 共'+data.length+'条';
+}
+function getExportData(range) {
+  if (range === 'verified') return wells.filter(function(w){return w.status==='verified';});
+  if (range === 'pending') return wells.filter(function(w){return w.status==='pending';});
+  if (range === 'measured') return wells.filter(function(w){return w.advAngle||w.optWetAngle;});
+  return wells;
+}
+function doExport() {
+  var format = document.getElementById('exportFormat').value;
+  var range = document.getElementById('exportRange').value;
+  var data = getExportData(range);
+  var selectedFields = [];
+  document.querySelectorAll('#exportFields .filter-chip.active').forEach(function(el) { selectedFields.push(el.dataset.field); });
+  var labels = {id:'井号',block:'区块',depth:'埋深(m)',pressure:'压力(MPa)',temp:'温度(°C)',coalRank:'煤阶',gas:'含气量(m³/t)',porosity:'孔隙度(%)',fracture:'裂缝(μm)',fracFluid:'压裂液量(m³)',contactAngle:'接触角(°)',recovery:'返排率(%)',status:'数据状态',method:'返排方式',advAngle:'前进接触角(°)',recAngle:'后退接触角(°)',dynAngle:'动态接触角(°)',optWetAngle:'最佳润湿角(°)',optDrainRate:'排液速率(m³/d)',drainNote:'返排备注'};
+  var filename = '井数据库_'+new Date().toISOString().slice(0,10)+'.'+format;
+  var content = '';
+  if (format === 'csv') {
+    content = '\uFEFF' + selectedFields.map(function(f){return labels[f]||f;}).join(',') + '\n';
+    content += data.map(function(w) {
+      return selectedFields.map(function(f) {
+        var v = w[f]; if (v === null || v === undefined) v = '';
+        var s = String(v); return s.indexOf(',') >= 0 ? '"'+s+'"' : s;
+      }).join(',');
+    }).join('\n');
+  } else {
+    var arr = data.map(function(w) {
+      var obj = {}; selectedFields.forEach(function(f) { obj[labels[f]||f] = w[f]; }); return obj;
+    });
+    content = JSON.stringify(arr, null, 2);
+  }
+  var blob = new Blob([content], {type: format==='csv'?'text/csv;charset=utf-8':'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+  var rangeLabels = {all:'全部井数据',verified:'仅已验证井',measured:'仅含实测数据井',pending:'仅待审核井'};
+  exportHistory.unshift({time:new Date().toLocaleString('zh-CN'),format:format.toUpperCase(),range:rangeLabels[range],count:data.length,filename:filename,user:'陈玉堂'});
+  renderExportPage(); addLog('green','导出 '+data.length+' 条数据 ('+format.toUpperCase()+')');
+  toast('已导出 '+data.length+' 条数据');
+}
+
+// ===== 相似井匹配引擎 =====
+function runMatch() {
+  var depth = parseFloat(document.getElementById('match_depth').value)||2350;
+  var pressure = parseFloat(document.getElementById('match_pressure').value)||16.5;
+  var temp = parseFloat(document.getElementById('match_temp').value)||72;
+  var gas = parseFloat(document.getElementById('match_gas').value)||15;
+  var porosity = parseFloat(document.getElementById('match_porosity').value)||5.5;
+  var fracture = parseFloat(document.getElementById('match_fracture').value)||35;
+  var coalRank = document.getElementById('match_coalrank').value;
+  var blockFilter = document.getElementById('match_block').value;
+  var results = wells.filter(function(w) {
+    return !blockFilter || w.block === blockFilter;
+  }).map(function(w) {
+    var dDepth = Math.abs(w.depth - depth) / 1000;
+    var dPressure = Math.abs(w.pressure - pressure) / 10;
+    var dTemp = Math.abs(w.temp - temp) / 30;
+    var dGas = Math.abs(w.gas - gas) / 20;
+    var dPorosity = Math.abs(w.porosity - porosity) / 12;
+    var dFracture = Math.abs(w.fracture - fracture) / 80;
+    var dCoalRank = w.coalRank === coalRank ? 0 : 0.5;
+    var dist = Math.sqrt(dDepth*dDepth*0.25 + dPressure*dPressure*0.15 + dTemp*dTemp*0.10 + dGas*dGas*0.15 + dPorosity*dPorosity*0.15 + dFracture*dFracture*0.10 + dCoalRank*dCoalRank*0.10);
+    var score = Math.max(50, Math.min(99.9, 100 - dist * 35));
+    return { well: w, score: Math.round(score*10)/10 };
+  });
+  results.sort(function(a,b) { return b.score - a.score; });
+  results = results.slice(0, 5);
+  var html = '';
+  if (!results.length) {
+    html = '<div style="text-align:center;padding:40px;color:var(--muted);">暂无匹配结果</div>';
+  } else {
+    results.forEach(function(r, i) {
+      var w = r.well;
+      var scoreColor = r.score >= 85 ? 'var(--green)' : r.score >= 70 ? 'var(--accent)' : 'var(--yellow)';
+      var scoreBg = r.score >= 85 ? 'rgba(63,185,80,0.15)' : r.score >= 70 ? 'rgba(47,129,247,0.15)' : 'rgba(210,153,34,0.15)';
+      var tag = i === 0 ? '<span class="tag verified">最佳匹配</span>' : i === 1 ? '<span class="tag predict">次优匹配</span>' : '';
+      html += '<div style="padding:14px;border:1px solid var(--rule);border-radius:8px;margin-bottom:10px;background:var(--bg2);'+(i===0?'border-color:'+scoreColor+';':'')+'">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+      html += '<div style="font-size:14px;font-weight:700;color:var(--accent);">'+w.id+' <span style="color:var(--muted);font-weight:400;font-size:11px;">'+w.block+'</span></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;">'+tag+'<span style="font-size:18px;font-weight:700;font-family:var(--mono);color:'+scoreColor+';">'+r.score+'%</span></div>';
+      html += '</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;">';
+      html += '<div><span style="color:var(--muted);">埋深:</span> '+w.depth+'m</div>';
+      html += '<div><span style="color:var(--muted);">压力:</span> '+w.pressure+'MPa</div>';
+      html += '<div><span style="color:var(--muted);">温度:</span> '+w.temp+'°C</div>';
+      html += '<div><span style="color:var(--muted);">含气量:</span> '+w.gas+'m³/t</div>';
+      html += '<div><span style="color:var(--muted);">孔隙度:</span> '+w.porosity+'%</div>';
+      html += '<div><span style="color:var(--muted);">裂缝:</span> '+w.fracture+'μm</div>';
+      html += '<div><span style="color:var(--muted);">煤阶:</span> '+w.coalRank+'</div>';
+      html += '<div><span style="color:var(--muted);">接触角:</span> '+w.contactAngle+'°</div>';
+      html += '<div><span style="color:var(--muted);">返排率:</span> '+w.recovery+'%</div>';
+      html += '</div>';
+      if (w.method) html += '<div style="margin-top:6px;font-size:11px;color:var(--cyan);">返排策略: '+w.method+'</div>';
+      if (w.drainNote) html += '<div style="margin-top:2px;font-size:10px;color:var(--muted);">备注: '+w.drainNote+'</div>';
+      html += '</div>';
+    });
+  }
+  document.getElementById('matchResults').innerHTML = html;
+}
+
+// ===== 训练记录页 =====
+function renderHistoryPage() {
+  var records = [
+    {id:'#047',time:'2026-07-31 14:20',duration:'2.1h',epoch:300,trainLoss:0.031,valLoss:0.039,r2:0.962,rmse:1.83,status:'最优',note:'CNN-RNN-ANN, 最佳模型'},
+    {id:'#046',time:'2026-07-28 09:15',duration:'2.5h',epoch:300,trainLoss:0.035,valLoss:0.044,r2:0.958,rmse:1.91,status:'完成',note:'调整Dropout=0.25'},
+    {id:'#045',time:'2026-07-25 16:30',duration:'2.0h',epoch:280,trainLoss:0.038,valLoss:0.048,r2:0.955,rmse:1.97,status:'完成',note:'增加Attention层'},
+    {id:'#044',time:'2026-07-22 10:00',duration:'2.3h',epoch:300,trainLoss:0.042,valLoss:0.052,r2:0.951,rmse:2.05,status:'完成',note:'lr调整为0.0008'},
+    {id:'#043',time:'2026-07-19 14:45',duration:'1.8h',epoch:250,trainLoss:0.048,valLoss:0.058,r2:0.947,rmse:2.13,status:'早停',note:'Epoch 250触发早停'},
+    {id:'#042',time:'2026-07-16 09:30',duration:'2.2h',epoch:300,trainLoss:0.052,valLoss:0.063,r2:0.943,rmse:2.21,status:'完成',note:'Batch Size调整为64'},
+    {id:'#041',time:'2026-07-13 15:20',duration:'2.4h',epoch:300,trainLoss:0.055,valLoss:0.068,r2:0.940,rmse:2.28,status:'完成',note:'新增20口井数据'},
+    {id:'#040',time:'2026-07-10 11:00',duration:'2.0h',epoch:280,trainLoss:0.061,valLoss:0.075,r2:0.936,rmse:2.35,status:'早停',note:'验证损失不再下降'},
+    {id:'#039',time:'2026-07-07 14:00',duration:'1.9h',epoch:260,trainLoss:0.065,valLoss:0.081,r2:0.932,rmse:2.42,status:'完成',note:'优化器改为AdamW'},
+    {id:'#038',time:'2026-07-04 10:30',duration:'2.1h',epoch:300,trainLoss:0.072,valLoss:0.089,r2:0.928,rmse:2.51,status:'完成',note:'初始基线模型v2.0'}
+  ];
+  var html = '';
+  records.forEach(function(r) {
+    var statusCls = r.status==='最优'?'verified':(r.status==='早停'?'predict':'');
+    html += '<tr><td style="color:var(--accent);font-weight:700;">'+r.id+'</td><td>'+r.time+'</td><td>'+r.duration+'</td><td>'+r.epoch+'</td><td>'+r.trainLoss+'</td><td>'+r.valLoss+'</td><td style="color:var(--green);font-weight:600;">'+r.r2+'</td><td>'+r.rmse+'°</td><td><span class="tag '+statusCls+'">'+r.status+'</span></td><td style="color:var(--muted);font-size:10px;">'+r.note+'</td></tr>';
+  });
+  document.getElementById('historyBody').innerHTML = html;
+}
+
+// ===== 用户权限页 =====
+var users = [
+  {name:'陈玉堂',avatar:'陈',role:'超级管理员',dept:'探微知流团队',perms:'全部权限',lastLogin:'2026-07-31 14:20',status:'online',empId:'TWZL-001',phone:'13812345678',email:'chen@twzl.edu.cn',note:'项目负责人，负责全部数据管理'},
+  {name:'张明轩',avatar:'张',role:'数据管理员',dept:'数据采集组',perms:'数据录入/编辑/导出',lastLogin:'2026-07-30 16:45',status:'online',empId:'TWZL-002',phone:'13987654321',email:'zhang@twzl.edu.cn',note:'负责现场数据采集与录入'},
+  {name:'李子涵',avatar:'李',role:'模型工程师',dept:'算法研发组',perms:'模型训练/参数配置',lastLogin:'2026-07-31 09:30',status:'online',empId:'TWZL-003',phone:'13700001111',email:'li@twzl.edu.cn',note:'负责CNN-RNN-ANN模型开发与训练'},
+  {name:'王浩然',avatar:'王',role:'数据分析员',dept:'数据分析组',perms:'数据查看/导出',lastLogin:'2026-07-29 11:20',status:'offline',empId:'TWZL-004',phone:'13622223333',email:'wang@twzl.edu.cn',note:'负责数据分析与报告生成'},
+  {name:'刘思琪',avatar:'刘',role:'审核员',dept:'质量控制组',perms:'数据审核/状态变更',lastLogin:'2026-07-30 14:00',status:'offline',empId:'TWZL-005',phone:'13555556666',email:'liu@twzl.edu.cn',note:'负责数据质量审核'},
+  {name:'赵宇轩',avatar:'赵',role:'访客',dept:'外部合作',perms:'仅查看',lastLogin:'2026-07-28 10:15',status:'disabled',empId:'EXT-001',phone:'13477778888',email:'zhao@partner.com',note:'合作单位人员，仅查看权限'}
+];
+var editingUserIdx = null;
+function renderUsersPage() {
+  var roleColors = {'超级管理员':'var(--red)','数据管理员':'var(--accent)','模型工程师':'var(--purple)','数据分析员':'var(--green)','审核员':'var(--yellow)','访客':'var(--muted)'};
+  var statusMap = {online:{cls:'verified',txt:'● 在线'},offline:{cls:'predict',txt:'○ 离线'},disabled:{cls:'pending',txt:'⚠ 已禁用'}};
+  var html = '';
+  users.forEach(function(u, i) {
+    var s = statusMap[u.status];
+    var toggleIcon = u.status === 'disabled' ? '🔓' : '✕';
+    var toggleTitle = u.status === 'disabled' ? '启用' : '禁用';
+    html += '<tr><td><div style="display:flex;align-items:center;gap:8px;"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--accent));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#fff;'+(u.status==='disabled'?'opacity:0.4;':'')+'">'+u.avatar+'</div><span style="font-weight:600;'+(u.status==='disabled'?'color:var(--muted2);text-decoration:line-through;':'')+'">'+u.name+'</span></div></td>';
+    html += '<td><span style="color:'+(u.status==='disabled'?'var(--muted2)':roleColors[u.role])+';">'+u.role+'</span></td>';
+    html += '<td>'+u.dept+'</td><td style="font-size:10px;color:var(--muted);">'+u.perms+'</td><td style="font-size:10px;">'+u.lastLogin+'</td>';
+    html += '<td><span class="tag '+s.cls+'">'+s.txt+'</span></td>';
+    html += '<td><div class="row-actions"><button class="row-btn" onclick="editUser('+i+')" title="编辑" style="border-color:rgba(47,129,247,0.3);color:var(--accent);">✎</button><button class="row-btn '+(u.status==='disabled'?'':'del')+'" onclick="toggleUserStatusByIndex('+i+')" title="'+toggleTitle+'">'+toggleIcon+'</button><button class="row-btn del" onclick="deleteUser('+i+')" title="删除">🗑</button></div></td></tr>';
+  });
+  document.getElementById('usersBody').innerHTML = html;
+  document.getElementById('userToolbarInfo').textContent = '共 '+users.length+' 名用户';
+}
+function editUser(idx) {
+  editingUserIdx = idx;
+  var u = users[idx];
+  document.getElementById('userModalTitle').textContent = '编辑用户 · ' + u.name;
+  document.getElementById('u_name').value = u.name;
+  document.getElementById('u_empId').value = u.empId || '';
+  document.getElementById('u_phone').value = u.phone || '';
+  document.getElementById('u_email').value = u.email || '';
+  document.getElementById('u_role').value = u.role;
+  document.getElementById('u_dept').value = u.dept;
+  document.getElementById('u_perms').value = u.perms;
+  document.getElementById('u_status').value = u.status;
+  document.getElementById('u_lastLogin').value = u.lastLogin;
+  document.getElementById('u_note').value = u.note || '';
+  updateUserPreview();
+  var btn = document.getElementById('u_toggleBtn');
+  if (u.status === 'disabled') { btn.textContent = '启用账号'; btn.classList.remove('danger'); }
+  else { btn.textContent = '禁用账号'; btn.classList.add('danger'); }
+  btn.style.display = '';
+  document.getElementById('userModalOverlay').classList.add('active');
+}
+function addUser() {
+  editingUserIdx = -1;
+  document.getElementById('userModalTitle').textContent = '新增用户';
+  document.getElementById('u_name').value = '';
+  document.getElementById('u_empId').value = '';
+  document.getElementById('u_phone').value = '';
+  document.getElementById('u_email').value = '';
+  document.getElementById('u_role').value = '数据管理员';
+  document.getElementById('u_dept').value = '';
+  document.getElementById('u_perms').value = '数据查看/导出';
+  document.getElementById('u_status').value = 'offline';
+  document.getElementById('u_lastLogin').value = '—';
+  document.getElementById('u_note').value = '';
+  updateUserPreview();
+  document.getElementById('u_toggleBtn').style.display = 'none';
+  document.getElementById('userModalOverlay').classList.add('active');
+}
+function closeUserModal() { document.getElementById('userModalOverlay').classList.remove('active'); editingUserIdx = null; }
+function updateUserPreview() {
+  var name = document.getElementById('u_name').value || '?';
+  var role = document.getElementById('u_role').value;
+  document.getElementById('u_avatarPreview').textContent = name.charAt(0);
+  document.getElementById('u_namePreview').textContent = name;
+  document.getElementById('u_rolePreview').textContent = role;
+}
+function saveUser() {
+  var newName = document.getElementById('u_name').value.trim();
+  if (!newName) { toast('请输入姓名','error'); return; }
+  var data = {
+    name: newName,
+    avatar: newName.charAt(0),
+    empId: document.getElementById('u_empId').value.trim(),
+    phone: document.getElementById('u_phone').value.trim(),
+    email: document.getElementById('u_email').value.trim(),
+    role: document.getElementById('u_role').value,
+    dept: document.getElementById('u_dept').value.trim(),
+    perms: document.getElementById('u_perms').value.trim(),
+    status: document.getElementById('u_status').value,
+    note: document.getElementById('u_note').value.trim()
+  };
+  if (editingUserIdx === -1) {
+    data.lastLogin = '—';
+    users.push(data);
+    renderUsersPage(); closeUserModal();
+    addLog('green','新增用户：'+data.name);
+    saveData();
+    toast('用户已添加');
+  } else if (editingUserIdx !== null) {
+    var u = users[editingUserIdx];
+    u.name = data.name; u.avatar = data.avatar; u.empId = data.empId;
+    u.phone = data.phone; u.email = data.email; u.role = data.role;
+    u.dept = data.dept; u.perms = data.perms; u.status = data.status; u.note = data.note;
+    renderUsersPage(); closeUserModal();
+    addLog('green','编辑用户信息：'+u.name);
+    saveData();
+    toast('用户信息已保存');
+  }
+}
+function toggleUserStatus() {
+  if (editingUserIdx === null || editingUserIdx < 0) return;
+  var u = users[editingUserIdx];
+  if (u.status === 'disabled') {
+    u.status = 'offline';
+    document.getElementById('u_status').value = 'offline';
+    document.getElementById('u_toggleBtn').textContent = '禁用账号';
+    document.getElementById('u_toggleBtn').classList.add('danger');
+    toast('账号已启用');
+  } else {
+    u.status = 'disabled';
+    document.getElementById('u_status').value = 'disabled';
+    document.getElementById('u_toggleBtn').textContent = '启用账号';
+    document.getElementById('u_toggleBtn').classList.remove('danger');
+    toast('账号已禁用');
+  }
+}
+function toggleUserStatusByIndex(idx) {
+  var u = users[idx];
+  if (u.status === 'disabled') { u.status = 'offline'; addLog('green','启用用户账号：'+u.name); toast(u.name+' 已启用'); }
+  else { u.status = 'disabled'; addLog('yellow','禁用用户账号：'+u.name); toast(u.name+' 已禁用'); }
+  renderUsersPage();
+  saveData();
+}
+function deleteUser(idx) {
+  var u = users[idx];
+  if (u.role === '超级管理员') { toast('不能删除超级管理员','error'); return; }
+  if (confirm('确定要删除用户「'+u.name+'」吗？')) {
+    users.splice(idx, 1);
+    renderUsersPage();
+    addLog('red','删除用户：'+u.name);
+    saveData();
+    toast(u.name+' 已删除');
+  }
+}
+
+// ===== 操作日志页 =====
+var logFilter = 'all';
+function renderLogsPage() {
+  var fullLogs = [
+    {type:'green',time:'2026-07-31 14:23:17',user:'陈玉堂',action:'导出30条井数据 (CSV)',ip:'192.168.1.100'},
+    {type:'accent',time:'2026-07-31 14:20:05',user:'李子涵',action:'启动模型训练 #047',ip:'192.168.1.103'},
+    {type:'green',time:'2026-07-31 11:15:30',user:'张明轩',action:'录入新井 TEST-001',ip:'192.168.1.101'},
+    {type:'yellow',time:'2026-07-31 10:30:12',user:'系统',action:'自动备份完成',ip:'127.0.0.1'},
+    {type:'green',time:'2026-07-30 16:48:22',user:'张明轩',action:'编辑井 XJ-FK-056 数据',ip:'192.168.1.101'},
+    {type:'accent',time:'2026-07-30 16:45:00',user:'张明轩',action:'登录系统',ip:'192.168.1.101'},
+    {type:'green',time:'2026-07-30 14:02:15',user:'刘思琪',action:'审核通过 3 口井数据',ip:'192.168.1.105'},
+    {type:'yellow',time:'2026-07-30 14:00:00',user:'刘思琪',action:'登录系统',ip:'192.168.1.105'},
+    {type:'green',time:'2026-07-30 09:30:45',user:'王浩然',action:'导出已验证井数据 (CSV)',ip:'192.168.1.104'},
+    {type:'accent',time:'2026-07-29 11:20:30',user:'李子涵',action:'模型训练 #046 完成',ip:'192.168.1.103'},
+    {type:'green',time:'2026-07-29 10:15:00',user:'陈玉堂',action:'批量导入 5 口井数据',ip:'192.168.1.100'},
+    {type:'yellow',time:'2026-07-28 18:00:00',user:'系统',action:'数据存储优化完成',ip:'127.0.0.1'},
+    {type:'accent',time:'2026-07-28 14:30:15',user:'李子涵',action:'调整模型参数 Dropout=0.25',ip:'192.168.1.103'},
+    {type:'green',time:'2026-07-28 10:15:20',user:'赵宇轩',action:'查看井数据库',ip:'10.0.0.50'},
+    {type:'yellow',time:'2026-07-28 02:00:00',user:'系统',action:'每月自动备份完成',ip:'127.0.0.1'}
+  ];
+  var filtered = logFilter === 'all' ? fullLogs : fullLogs.filter(function(l) { return l.type === logFilter; });
+  var typeNames = {green:'数据操作',accent:'模型操作',yellow:'系统操作'};
+  var html = '';
+  if (!filtered.length) {
+    html = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);">暂无日志</td></tr>';
+  } else {
+    filtered.forEach(function(l) {
+      var typeColor = l.type==='green'?'var(--green)':(l.type==='accent'?'var(--accent)':'var(--yellow)');
+      html += '<tr><td style="font-size:10px;">'+l.time+'</td><td><span style="color:'+typeColor+';">'+typeNames[l.type]+'</span></td><td>'+l.user+'</td><td>'+l.action+'</td><td style="font-size:10px;color:var(--muted);">'+l.ip+'</td></tr>';
+    });
+  }
+  document.getElementById('logsBody').innerHTML = html;
+  document.getElementById('logToolbarInfo').textContent = '共 '+filtered.length+' 条日志';
+}
+function setLogFilter(filter, el) {
+  logFilter = filter;
+  document.querySelectorAll('#view-logs .toolbar .btn').forEach(function(b) {
+    if (b.onclick) b.classList.remove('active');
+  });
+  el.classList.add('active');
+  renderLogsPage();
+}
+function clearLogs() {
+  if (!confirm('确认清空所有操作日志吗？')) return;
+  document.getElementById('logsBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);">暂无日志</td></tr>';
+  toast('日志已清空');
+}
+
+// ===== 系统设置页 =====
+function renderSettingsPage() {
+  try {
+    var size = JSON.stringify(wells).length;
+    document.getElementById('set_dataSize').textContent = (size / 1024).toFixed(1) + ' KB';
+  } catch(e) {
+    document.getElementById('set_dataSize').textContent = '— KB';
+  }
+}
+function backupData() {
+  try {
+    localStorage.setItem('cbm_backup', JSON.stringify({wells: wells, log: activityLog, time: new Date().toISOString()}));
+    toast('数据备份成功');
+    addLog('yellow','手动数据备份完成');
+  } catch(e) { toast('备份失败','error'); }
+}
+function restoreData() {
+  try {
+    var backup = JSON.parse(localStorage.getItem('cbm_backup'));
+    if (!backup) { toast('无备份数据','error'); return; }
+    if (!confirm('确认恢复至 '+backup.time+' 的备份数据？当前数据将被覆盖。')) return;
+    wells = backup.wells; activityLog = backup.log || activityLog;
+    saveData(); renderAll(); toast('数据恢复成功');
+  } catch(e) { toast('恢复失败','error'); }
+}
+function resetData() {
+  if (!confirm('确认重置全部数据？此操作不可撤销！')) return;
+  if (!confirm('再次确认：所有自定义数据将被清除，恢复到初始状态。')) return;
+  localStorage.removeItem('cbm_wells');
+  localStorage.removeItem('cbm_log');
+  localStorage.removeItem('cbm_backup');
+  localStorage.removeItem('cbm_users');
+  location.reload();
+}
+
+// ===== Modal 增删改 =====
+function openModal(id) {
+  editingId = id || null;
+  document.getElementById('modalTitle').textContent = id ? '编辑井数据' : '录入新井';
+  if (id) {
+    var w = wells.find(function(x){return x.id===id;});
+    if (w) {
+      document.getElementById('f_id').value = w.id;
+      document.getElementById('f_block').value = w.block;
+      document.getElementById('f_depth').value = w.depth;
+      document.getElementById('f_pressure').value = w.pressure;
+      document.getElementById('f_temp').value = w.temp;
+      document.getElementById('f_coalrank').value = w.coalRank;
+      document.getElementById('f_gas').value = w.gas;
+      document.getElementById('f_porosity').value = w.porosity;
+      document.getElementById('f_fracture').value = w.fracture;
+      document.getElementById('f_fracfluid').value = w.fracFluid;
+      document.getElementById('f_contact').value = w.contactAngle;
+      document.getElementById('f_recovery').value = w.recovery;
+      document.getElementById('f_status').value = w.status;
+      document.getElementById('f_advAngle').value = w.advAngle||'';
+      document.getElementById('f_recAngle').value = w.recAngle||'';
+      document.getElementById('f_dynAngle').value = w.dynAngle||'';
+      document.getElementById('f_optWetAngle').value = w.optWetAngle||'';
+      document.getElementById('f_optDrainRate').value = w.optDrainRate||'';
+      document.getElementById('f_drainNote').value = w.drainNote||'';
+      document.getElementById('f_id').disabled = true;
+    }
+  } else {
+    ['f_id','f_depth','f_pressure','f_temp','f_gas','f_porosity','f_fracture','f_fracfluid','f_contact','f_recovery','f_advAngle','f_recAngle','f_dynAngle','f_optWetAngle','f_optDrainRate','f_drainNote'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('f_id').disabled = false;
+  }
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+function saveWell() {
+  var id = document.getElementById('f_id').value.trim();
+  if (!id) { toast('请输入井号','error'); return; }
+  var data = {
+    id: id,
+    block: document.getElementById('f_block').value,
+    depth: parseFloat(document.getElementById('f_depth').value)||0,
+    pressure: parseFloat(document.getElementById('f_pressure').value)||0,
+    temp: parseFloat(document.getElementById('f_temp').value)||0,
+    coalRank: document.getElementById('f_coalrank').value,
+    gas: parseFloat(document.getElementById('f_gas').value)||0,
+    porosity: parseFloat(document.getElementById('f_porosity').value)||0,
+    fracture: parseFloat(document.getElementById('f_fracture').value)||0,
+    fracFluid: parseFloat(document.getElementById('f_fracfluid').value)||0,
+    contactAngle: parseFloat(document.getElementById('f_contact').value)||0,
+    recovery: parseFloat(document.getElementById('f_recovery').value)||0,
+    status: document.getElementById('f_status').value,
+    method: '分段控压返排',
+    advAngle: parseFloat(document.getElementById('f_advAngle').value)||null,
+    recAngle: parseFloat(document.getElementById('f_recAngle').value)||null,
+    dynAngle: parseFloat(document.getElementById('f_dynAngle').value)||null,
+    optWetAngle: parseFloat(document.getElementById('f_optWetAngle').value)||null,
+    optDrainRate: parseFloat(document.getElementById('f_optDrainRate').value)||null,
+    drainNote: document.getElementById('f_drainNote').value.trim()||''
+  };
+  if (editingId) {
+    var idx = wells.findIndex(function(w){return w.id===editingId;});
+    if (idx>=0) { wells[idx] = data; addLog('accent','井 '+id+' 数据已更新'); toast('修改成功'); }
+  } else {
+    if (wells.find(function(w){return w.id===id;})) { toast('井号已存在','error'); return; }
+    wells.push(data);
+    addLog('green','新井 '+id+' 已录入数据库');
+    toast('录入成功');
+  }
+  saveData(); closeModal(); renderAll();
+}
+function editWell(id) { openModal(id); }
+
+// ===== 查看详情 =====
+function viewDetail(id) {
+  var w = wells.find(function(x){return x.id===id;});
+  if (!w) return;
+  var statusNames = {verified:'已验证（实测）',predict:'预测补全',pending:'待审核'};
+  var statusColors = {verified:'green',predict:'yellow',pending:'accent'};
+  document.getElementById('detailTitle').textContent = '井数据详情 · ' + w.id;
+  document.getElementById('detailTitle').dataset.wellId = id;
+
+  var hasMeasured = w.advAngle || w.recAngle || w.dynAngle || w.optWetAngle || w.optDrainRate || w.drainNote;
+  var measuredHtml = hasMeasured ? '' : '<div class="detail-empty" style="padding:0 4px;">该井暂无实测数据，接触角 '+(w.contactAngle||'—')+'° 为模型预测值</div>';
+
+  if (w.advAngle || w.recAngle || w.dynAngle) {
+    measuredHtml += '<div class="detail-grid">';
+    measuredHtml += detailItem('前进接触角', w.advAngle ? w.advAngle+'°' : null, 'cyan');
+    measuredHtml += detailItem('后退接触角', w.recAngle ? w.recAngle+'°' : null, 'cyan');
+    measuredHtml += detailItem('动态接触角', w.dynAngle ? w.dynAngle+'°' : null, 'cyan');
+    measuredHtml += '</div>';
+  }
+  if (w.optWetAngle || w.optDrainRate) {
+    measuredHtml += '<div class="detail-grid" style="margin-top:10px;">';
+    measuredHtml += detailItem('最佳反排润湿角', w.optWetAngle ? w.optWetAngle+'°' : null, 'cyan');
+    measuredHtml += detailItem('最佳排液速率', w.optDrainRate ? w.optDrainRate+' m³/d' : null, 'cyan');
+    measuredHtml += '</div>';
+  }
+  if (w.drainNote) {
+    measuredHtml += '<div style="margin-top:10px;padding:0 4px;"><div class="detail-label">最佳返排策略备注</div><div class="detail-value muted" style="font-size:12px;">'+w.drainNote+'</div></div>';
+  }
+
+  var html = '';
+  // 基础信息
+  html += '<div class="detail-section">';
+  html += '<div class="detail-section-title">基础信息</div>';
+  html += '<div class="detail-grid">';
+  html += detailItem('井号', w.id, 'accent');
+  html += detailItem('区块', w.block);
+  html += detailItem('埋深', w.depth+' m');
+  html += detailItem('地层压力', w.pressure+' MPa');
+  html += detailItem('地层温度', w.temp+' °C');
+  html += detailItem('煤阶', w.coalRank);
+  html += detailItem('数据状态', statusNames[w.status], statusColors[w.status]);
+  html += detailItem('返排方式', w.method, 'muted');
+  html += '</div></div>';
+
+  // 储层物性
+  html += '<div class="detail-section">';
+  html += '<div class="detail-section-title">储层物性参数</div>';
+  html += '<div class="detail-grid">';
+  html += detailItem('含气量', w.gas+' m³/t');
+  html += detailItem('孔隙度', w.porosity+' %');
+  html += detailItem('裂缝宽度', w.fracture+' μm');
+  html += detailItem('压裂液量', w.fracFluid+' m³');
+  html += detailItem('接触角', w.contactAngle+'°', hasMeasured ? 'muted' : 'accent');
+  html += detailItem('返排率', w.recovery+' %');
+  html += '</div></div>';
+
+  // 实测数据
+  html += '<div class="detail-section">';
+  html += '<div class="detail-section-title measured">实测数据'+(hasMeasured?'':'（暂无）')+'</div>';
+  html += measuredHtml;
+  html += '</div>';
+
+  document.getElementById('detailBody').innerHTML = html;
+  document.getElementById('detailOverlay').classList.add('active');
+}
+function detailItem(label, value, colorClass) {
+  var cls = colorClass ? ' '+colorClass : '';
+  var val = value ? '<div class="detail-value'+cls+'">'+value+'</div>' : '<div class="detail-empty">—</div>';
+  return '<div class="detail-item"><div class="detail-label">'+label+'</div>'+val+'</div>';
+}
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('active'); }
+function deleteWell(id) {
+  if (!confirm('确认删除井 '+id+' 吗？')) return;
+  wells = wells.filter(function(w){return w.id!==id;});
+  addLog('yellow','井 '+id+' 已删除');
+  saveData(); renderAll(); toast('已删除');
+}
+
+// ===== 导出CSV =====
+function exportCSV() {
+  var headers = ['井号','区块','埋深(m)','压力(MPa)','温度(°C)','煤阶','含气量(m³/t)','孔隙度(%)','裂缝(μm)','压裂液量(m³)','接触角(°)','返排率(%)','数据状态','返排方式','前进接触角(°)','后退接触角(°)','动态接触角(°)','最佳反排润湿角(°)','最佳排液速率(m³/d)','返排策略备注'];
+  var rows = wells.map(function(w) {
+    var statusTxt = w.status==='verified'?'已验证':(w.status==='predict'?'预测补全':'待审核');
+    return [w.id,w.block,w.depth,w.pressure,w.temp,w.coalRank,w.gas,w.porosity,w.fracture,w.fracFluid,w.contactAngle,w.recovery,statusTxt,w.method,w.advAngle||'',w.recAngle||'',w.dynAngle||'',w.optWetAngle||'',w.optDrainRate||'',w.drainNote||''];
+  });
+  var csv = '\uFEFF' + headers.join(',') + '\n' + rows.map(function(r){return r.map(function(c){var s=String(c);return s.indexOf(',')>=0?'"'+s+'"':s;}).join(',');}).join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = '井数据库_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+  toast('已导出 '+wells.length+' 条数据');
+}
+
+// ===== 导入CSV =====
+function importCSV(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result.replace(/^\uFEFF/,'');
+    var lines = text.split('\n').filter(function(l){return l.trim();});
+    if (lines.length < 2) { toast('CSV文件为空','error'); return; }
+    var count = 0;
+    for (var i=1; i<lines.length; i++) {
+      var cols = lines[i].split(',');
+      if (cols.length < 12) continue;
+      var id = cols[0].trim();
+      if (!id || wells.find(function(w){return w.id===id;})) continue;
+      wells.push({
+        id:id, block:cols[1], depth:parseFloat(cols[2])||0, pressure:parseFloat(cols[3])||0,
+        temp:parseFloat(cols[4])||0, coalRank:cols[5], gas:parseFloat(cols[6])||0,
+        porosity:parseFloat(cols[7])||0, fracture:parseFloat(cols[8])||0,
+        fracFluid:parseFloat(cols[9])||0, contactAngle:parseFloat(cols[10])||0,
+        recovery:parseFloat(cols[11])||0, status:'pending', method:'分段控压返排',
+        advAngle: cols[14] ? parseFloat(cols[14])||null : null,
+        recAngle: cols[15] ? parseFloat(cols[15])||null : null,
+        dynAngle: cols[16] ? parseFloat(cols[16])||null : null,
+        optWetAngle: cols[17] ? parseFloat(cols[17])||null : null,
+        optDrainRate: cols[18] ? parseFloat(cols[18])||null : null,
+        drainNote: cols[19] ? cols[19].trim() : ''
+      });
+      count++;
+    }
+    saveData(); renderAll();
+    addLog('green','批量导入 '+count+' 口井数据');
+    toast('成功导入 '+count+' 条数据');
+  };
+  reader.readAsText(file, 'UTF-8');
+  event.target.value = '';
+}
+
+// ===== 数据编码页 =====
+function renderCodingPage() {
+  var blockCodes = {'新疆阜康':'FK','新疆鄯善':'QT','鄂尔多斯':'EDS','沁水盆地':'QS','韩城区块':'HC'};
+  var rankCodes = {'低阶煤':'L','中阶煤':'M','高阶煤':'H'};
+  var statusCodes = {'verified':'V','predict':'P','pending':'W'};
+  var statusTags = {'verified':'status','predict':'status','pending':'status'};
+  var statusColors = {'verified':'var(--green)','predict':'var(--yellow)','pending':'var(--red)'};
+  var html = '';
+  wells.forEach(function(w) {
+    var bc = blockCodes[w.block]||'XX';
+    var rc = rankCodes[w.coalRank]||'X';
+    var dc = 'D'+String(Math.floor(w.depth/100));
+    var sc = statusCodes[w.status]||'W';
+    var code = bc+'-'+rc+'-'+dc+'-'+sc;
+    html += '<tr><td style="color:var(--accent)">'+w.id+'</td><td><span class="code-tag block">'+bc+'</span></td><td><span class="code-tag rank">'+rc+'</span></td><td><span class="code-tag depth">'+dc+'</span></td><td><span class="code-tag status" style="background:rgba('+(w.status==='verified'?'63,185,80':w.status==='predict'?'210,153,34':'248,81,73')+',0.15);color:'+statusColors[w.status]+'">'+sc+'</span></td><td style="color:'+statusColors[w.status]+'">'+code+'</td></tr>';
+  });
+  document.getElementById('encodeBody').innerHTML = html;
+
+  // Pipeline
+  document.getElementById('pipeCollect').textContent = wells.length;
+  document.getElementById('pipeClean').textContent = wells.length;
+  document.getElementById('pipeCode').textContent = wells.length;
+  document.getElementById('pipeStore').textContent = wells.filter(function(w){return w.status==='verified';}).length;
+
+  // Mini stats
+  document.getElementById('msTotal').textContent = wells.length;
+  document.getElementById('msVerified').textContent = wells.filter(function(w){return w.status==='verified';}).length;
+  document.getElementById('msPending').textContent = wells.filter(function(w){return w.status==='pending';}).length;
+
+  // Distribution
+  var blocks = {};
+  wells.forEach(function(w){blocks[w.block]=(blocks[w.block]||0)+1;});
+  var colors = {'新疆阜康':'var(--accent)','鄂尔多斯':'var(--green)','沁水盆地':'var(--purple)','新疆鄯善':'var(--cyan)','韩城区块':'var(--yellow)'};
+  var distHtml = '';
+  Object.keys(blocks).sort(function(a,b){return blocks[b]-blocks[a];}).forEach(function(b) {
+    var pct = Math.round(blocks[b]/wells.length*1000)/10;
+    distHtml += '<div class="dist-row"><div class="dist-label"><span>'+b+'</span><span style="color:'+(colors[b]||'var(--accent)')+'">'+blocks[b]+' 口 ('+pct+'%)</span></div><div class="quality-bar"><div class="quality-fill" style="width:'+pct+'%;background:'+(colors[b]||'var(--accent)')+'"></div></div></div>';
+  });
+  document.getElementById('distBody').innerHTML = distHtml;
+
+  // Activity log
+  var logHtml = '';
+  activityLog.slice(0,6).forEach(function(a) {
+    logHtml += '<div class="activity-item"><div class="activity-dot '+a.type+'"></div><div class="activity-content"><div class="activity-text">'+a.text+'</div><div class="activity-time">'+a.time+'</div></div></div>';
+  });
+  document.getElementById('logBody').innerHTML = logHtml;
+}
+
+function addLog(type, text) {
+  activityLog.unshift({type:type, text:text, time:'刚刚'});
+  if (activityLog.length > 20) activityLog = activityLog.slice(0,20);
+  try { localStorage.setItem('cbm_log', JSON.stringify(activityLog)); } catch(e) {}
+}
+
+// ===== 模型训练 - 损失曲线 =====
+function renderLossChart() {
+  var el = document.getElementById('lossChart');
+  if (!el) return;
+  var chart = echarts.init(el, null, {renderer:'svg'});
+  var epochs = []; var trainLoss = []; var valLoss = [];
+  for (var i=1; i<=187; i++) {
+    epochs.push(i);
+    trainLoss.push(parseFloat((0.75*Math.exp(-i/45)+0.03+Math.random()*0.01).toFixed(4)));
+    valLoss.push(parseFloat((0.78*Math.exp(-i/42)+0.038+Math.random()*0.012).toFixed(4)));
+  }
+  chart.setOption({
+    grid: {left:45,right:15,top:15,bottom:30},
+    tooltip: {trigger:'axis'},
+    xAxis: {type:'category',data:epochs,name:'Epoch',axisLine:{lineStyle:{color:'#30363d'}},axisLabel:{color:'#8b949e',fontSize:9}},
+    yAxis: {type:'value',name:'Loss',axisLine:{lineStyle:{color:'#30363d'}},axisLabel:{color:'#8b949e',fontSize:9},splitLine:{lineStyle:{color:'#30363d',type:'dashed',opacity:0.5}}},
+    series: [
+      {name:'训练损失',type:'line',data:trainLoss,smooth:true,showSymbol:false,lineStyle:{color:'#2f81f7',width:2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(47,129,247,0.2)'},{offset:1,color:'rgba(47,129,247,0)'}])}},
+      {name:'验证损失',type:'line',data:valLoss,smooth:true,showSymbol:false,lineStyle:{color:'#bc8cff',width:2,type:'dashed'}}
+    ]
+  });
+  window.addEventListener('resize', function(){chart.resize();});
+}
+
+// ===== Toast =====
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type==='error'?' error':'');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+// ===== 启动 =====
+init();
+</script>
+</body>
+</html>
