@@ -642,7 +642,7 @@ body {
     </div>
   </div>
   <div class="header-right">
-    <div class="db-badge">数据库已加载 128 口井</div>
+    <div class="db-badge" id="dbBadge">数据库已加载 <span id="wellCount">0</span> 口井</div>
     <div style="display:flex;align-items:center;gap:6px;">
       <div class="status-dot"></div>
       <span class="status-text">系统运行中</span>
@@ -2739,6 +2739,12 @@ function decodeV2(record) {
   return record.wells || null;
 }
 
+// 更新顶部井数显示
+function updateWellCount() {
+  var el = document.getElementById('wellCount');
+  if (el) el.textContent = WELL_DB.length;
+}
+
 function loadWellsFromCloud() {
   var xhr = new XMLHttpRequest();
   xhr.open('GET', JSONBIN_URL + '/latest', true);
@@ -2752,6 +2758,7 @@ function loadWellsFromCloud() {
           if (decoded && decoded.length) {
             WELL_DB = decoded;
             console.log('云端数据已加载: ' + WELL_DB.length + ' 口井 (更新时间: ' + (resp.record.lu || resp.record.lastUpdated || '未知') + ')');
+            updateWellCount();
             var matchInfo = document.getElementById('matchInfo');
             if (matchInfo) {
               matchInfo.textContent = '已从云端加载 ' + WELL_DB.length + ' 口井数据';
@@ -2764,6 +2771,8 @@ function loadWellsFromCloud() {
   xhr.send();
 }
 
+// 先显示本地WELL_DB井数，再从云端同步
+updateWellCount();
 // 页面加载时自动从云端同步
 loadWellsFromCloud();
 </script>
